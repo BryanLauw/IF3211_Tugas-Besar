@@ -202,80 +202,79 @@ header {
 }
 
 /* Form ================================ */
-.form {
-    max-width: 37.5rem; /* 600px / 16px */
-    margin: 3.75rem auto; /* 60px / 16px (atas/bawah) auto (kiri/kanan) */
-    background-color: #ffffff;
-    box-shadow: 0 0.125rem 0.375rem #c1ced7; /* 0 2px 6px */
-    border-radius: 0.25rem; /* Tambahkan sedikit border-radius */
+.dynamic-form-table {
+    width: 50%; /* Lebar tabel, bisa disesuaikan */
+    max-width: 62.5rem; /* Lebar maksimum tabel (misal 1000px) */
+    margin: 2rem auto; /* Menengahkan tabel: margin atas & bawah 2rem, kiri & kanan auto */
+    border-collapse: collapse; /* Menghilangkan spasi antar border sel */
+    box-shadow: 0 0.125rem 0.375rem rgba(0,0,0,0.1); /* Bayangan halus */
+    border-radius: 0.5rem; /* Sudut membulat untuk tabel (perlu overflow:hidden jika ada border sel) */
+    overflow: hidden; /* Diperlukan agar border-radius terlihat jika sel punya border */
 }
 
-.form-heading {
-    font-weight: 300;
-    margin: 2.5rem 0 1.25rem; /* Disesuaikan: 40px atas, 20px bawah */
-    font-size: 3rem; /* 48px / 16px */
-    color: #000000;
-    text-align: center; /* Pusatkan heading form */
+.dynamic-form-table th,
+.dynamic-form-table td {
+    border: 0.0625rem solid #e0e0e0; /* Border tipis untuk sel */
+    padding: 0.75rem; /* Padding di dalam sel */
+    text-align: left; /* Penjajaran teks default */
+    vertical-align: middle; /* Penjajaran vertikal di tengah */
 }
 
-.form-body {
-    padding: 1.875rem; /* 30px / 16px */
+.dynamic-form-table th {
+    background-color: #f8f9fa; /* Latar belakang header tabel */
+    font-weight: 600; /* Teks header tebal */
+    font-size: 0.9rem;
 }
 
-.form-error {
-    color: #ff4d75;
-    margin-bottom: 0.625rem; /* 10px */
-    font-size: 0.875rem; /* 14px */
+.dynamic-form-table td:first-child { /* Kolom Nomor */
+    text-align: center;
+    font-weight: bold;
+    width: 4rem; /* Lebar tetap untuk kolom nomor */
 }
 
-.form input {
-    width: 100%;
-    border: 0.0625rem solid #d8dadf; /* 1px */
-    padding: 0.625rem; /* 10px */
-    color: #000000;
-    font-size: 1rem; /* 16px */
-    letter-spacing: 0.0625rem; /* Disesuaikan dari 2px */
-    border-radius: 0.125rem; /* 2px */
-    background-color: #ffffff;
-    margin-bottom: 0.9375rem; /* Tambahkan margin bawah antar input: 15px */
-}
-.form input:last-child {
-    margin-bottom: 0; /* Hapus margin bawah untuk input terakhir sebelum submit */
+.table-input,
+.table-select {
+    width: 100%; /* Input dan select mengisi lebar sel */
+    padding: 0.5rem;
+    border: 0.0625rem solid #ced4da;
+    border-radius: 0.25rem;
+    font-size: 0.9rem;
+    box-sizing: border-box; /* Padding dan border tidak menambah lebar total */
 }
 
-
-.form textarea {
-    width: 100%;
-    min-height: 6.875rem; /* 110px / 16px */
-    font-size: 1rem; /* 16px */
-    letter-spacing: 0.0625rem; /* Disesuaikan dari 2px */
-    border: 0.0625rem solid #d8dadf; /* 1px */
-    padding: 0.625rem; /* 10px */
-    color: #000000;
-    background-color: #ffffff;
-    border-radius: 0.125rem; /* Samakan dengan input */
-    margin-bottom: 0.9375rem; /* Tambahkan margin bawah: 15px */
-}
-
-.form input[type="submit"] {
-    background-color: #3ecdc6;
-    color: #ffffff;
+/* Tombol di Dalam Tabel dan Tombol Aksi Tabel ================================ */
+.button-remove-row,
+.button-add-row {
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-radius: 0.25rem;
     cursor: pointer;
-    font-weight: 300;
-    width: 7.5rem; /* 120px / 16px */
-    border-radius: 0.125rem; /* 2px */
-    margin-top: 0.5rem; /* 8px / 16px */
-    margin-bottom: 0;
-    float: right;
-    padding: 0.625rem 0.9375rem; /* Sesuaikan padding agar proporsional */
-    font-size: 1rem; /* Samakan dengan input lain */
-    letter-spacing: normal; /* Reset letter-spacing untuk tombol */
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    font-weight: 500;
 }
 
-.form-body:after {
-    content: '';
-    display: table;
-    clear: both;
+.button-remove-row {
+    background-color: #e74c3c; /* Merah */
+    color: white;
+    line-height: 1; /* Agar simbol X pas di tengah */
+}
+
+.button-remove-row:hover {
+    background-color: #c0392b;
+    transform: scale(1.05);
+}
+
+.table-actions {
+    text-align: center; /* Menengahkan konten di dalam div ini */
+    margin-top: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.button-add-row {
+    background-color: #3498db; /* Biru */
+    color: white;
+    display: inline-block; /* Agar bisa di-center oleh text-align parent */
 }
 
 /* Flash ================================ */

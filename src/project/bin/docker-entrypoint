@@ -6,4 +6,6 @@ if [ -z "${LD_PRELOAD+x}" ]; then
     export LD_PRELOAD
 fi
 
+rm -f /rails/tmp/pids/server.pid
+
 exec "${@}"

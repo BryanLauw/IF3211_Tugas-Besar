@@ -1,2 +1,93 @@
-<h1>Calculator#genotype</h1>
-<p>Find me in app/views/calculator/genotype.html.erb</p>
+<main class="main top-main">
+    <h2>Perhitungan dengan Hasil Tes DNA</h2>
+
+    <div data-controller="dynamic-table">
+        <h1>Gen Orang Tua</h1>
+        <table class="dynamic-form-table"> <%# Tambahkan kelas untuk styling tabel %>
+            <thead>
+                <tr>
+                    <th>Nomor</th>
+                    <th>Gen</th>
+                    <th>Zigositas P1</th>
+                    <th>Zigositas P2</th>
+                    <th></th> <%# Kolom untuk tombol hapus %>
+                </tr>
+            </thead>
+            <tbody data-dynamic-table-target="container">
+                <tr data-dynamic-table-target="row">
+                    <td>1</td>
+                    <td><input type="text" name="calculator[genes][]" class="table-input" /></td>
+                    <td>
+                        <select name="calculator[zygosities_p1][]" class="table-select"> <%# Beri nama unik untuk P1 %>
+                            <option value="Homozygot">Homozygot</option>
+                            <option value="Heterozygot">Heterozygot</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="calculator[zygosities_p2][]" class="table-select"> <%# Beri nama unik untuk P2 %>
+                            <option value="Homozygot">Homozygot</option>
+                            <option value="Heterozygot">Heterozygot</option>
+                        </select>
+                    </td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="table-actions">
+            <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Genotip</button>
+        </div>
+
+        <template data-dynamic-table-target="template">
+            <tr data-dynamic-table-target="row">
+                <td></td>
+                <td><input type="text" name="calculator[genes][]" class="table-input" /></td>
+                <td>
+                    <select name="calculator[zygosities_p1][]" class="table-select"> <%# Sesuaikan nama untuk P1 %>
+                        <option value="Homozygot">Homozygot</option>
+                        <option value="Heterozygot">Heterozygot</option>
+                    </select>
+                </td>
+                <td>
+                    <select name="calculator[zygosities_p2][]" class="table-select"> <%# Sesuaikan nama untuk P2 %>
+                        <option value="Homozygot">Homozygot</option>
+                        <option value="Heterozygot">Heterozygot</option>
+                    </select>
+                </td>
+                <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
+            </tr>
+        </template>
+    </div>
+
+    <div data-controller="dynamic-table">
+        <h1>Fenotip yang dicari</h1>
+        <table class="dynamic-form-table">
+            <thead>
+                <tr>
+                    <th>Nomor</th>
+                    <th>Fenotip</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody data-dynamic-table-target="container">
+                <tr data-dynamic-table-target="row">
+                    <td>1</td>
+                    <td><input type="text" name="calculator[phenotypes][]" class="table-input" /></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="table-actions">
+            <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Fenotip</button>
+        </div>
+
+        <template data-dynamic-table-target="template">
+            <tr data-dynamic-table-target="row">
+                <td></td>
+                <td><input type="text" name="calculator[phenotypes][]" class="table-input" /></td>
+                <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
+            </tr>
+        </template>
+    </div>
+</main>
