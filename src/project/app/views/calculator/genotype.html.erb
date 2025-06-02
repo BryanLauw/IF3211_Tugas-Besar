@@ -1,93 +1,133 @@
 <main class="main top-main">
     <h2>Perhitungan dengan Hasil Tes DNA</h2>
 
-    <div data-controller="dynamic-table">
-        <h1>Gen Orang Tua</h1>
-        <table class="dynamic-form-table"> <%# Tambahkan kelas untuk styling tabel %>
-            <thead>
-                <tr>
-                    <th>Nomor</th>
-                    <th>Gen</th>
-                    <th>Zigositas P1</th>
-                    <th>Zigositas P2</th>
-                    <th></th> <%# Kolom untuk tombol hapus %>
-                </tr>
-            </thead>
-            <tbody data-dynamic-table-target="container">
+    <% if flash[:alert] %>
+      <div class="flash-message alert" style="background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:alert] %></div>
+    <% end %>
+    <% if flash[:info] %>
+      <div class="flash-message info" style="background-color: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:info] %></div>
+    <% end %>
+
+    <%= form_with(url: process_genotype_calculator_path, method: :post, local: true, data: { turbo: false }, html: { class: "main-calculator-form" }) do |form| %>
+        <%# --- Bagian Gen Orang Tua --- %>
+        <div data-controller="dynamic-table" class="dynamic-section">
+            <h1>Gen Orang Tua</h1>
+            <table class="dynamic-form-table">
+                <thead>
+                    <tr>
+                        <th>Nomor</th>
+                        <th>Gen</th>
+                        <th>Zigositas P1</th>
+                        <th>Zigositas P2</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody data-dynamic-table-target="container">
+                    <tr data-dynamic-table-target="row">
+                        <td>1</td>
+                        <td><%= text_field_tag "calculator[genes][]", nil, class: "table-input", placeholder: "Contoh: F8" %></td>
+                        <td>
+                            <%= select_tag "calculator[zygosities_p1][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
+                        </td>
+                        <td>
+                            <%= select_tag "calculator[zygosities_p2][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="table-actions">
+                <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Genotip</button>
+            </div>
+            <template data-dynamic-table-target="template">
                 <tr data-dynamic-table-target="row">
-                    <td>1</td>
-                    <td><input type="text" name="calculator[genes][]" class="table-input" /></td>
+                    <td></td>
+                    <td><%= text_field_tag "calculator[genes][]", nil, class: "table-input", placeholder: "Contoh: CFTR" %></td>
                     <td>
-                        <select name="calculator[zygosities_p1][]" class="table-select"> <%# Beri nama unik untuk P1 %>
-                            <option value="Homozygot">Homozygot</option>
-                            <option value="Heterozygot">Heterozygot</option>
-                        </select>
+                        <%= select_tag "calculator[zygosities_p1][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
                     </td>
                     <td>
-                        <select name="calculator[zygosities_p2][]" class="table-select"> <%# Beri nama unik untuk P2 %>
-                            <option value="Homozygot">Homozygot</option>
-                            <option value="Heterozygot">Heterozygot</option>
-                        </select>
+                        <%= select_tag "calculator[zygosities_p2][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
                     </td>
-                    <td></td>
+                    <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
                 </tr>
-            </tbody>
-        </table>
-
-        <div class="table-actions">
-            <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Genotip</button>
+            </template>
         </div>
 
-        <template data-dynamic-table-target="template">
-            <tr data-dynamic-table-target="row">
-                <td></td>
-                <td><input type="text" name="calculator[genes][]" class="table-input" /></td>
-                <td>
-                    <select name="calculator[zygosities_p1][]" class="table-select"> <%# Sesuaikan nama untuk P1 %>
-                        <option value="Homozygot">Homozygot</option>
-                        <option value="Heterozygot">Heterozygot</option>
-                    </select>
-                </td>
-                <td>
-                    <select name="calculator[zygosities_p2][]" class="table-select"> <%# Sesuaikan nama untuk P2 %>
-                        <option value="Homozygot">Homozygot</option>
-                        <option value="Heterozygot">Heterozygot</option>
-                    </select>
-                </td>
-                <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
-            </tr>
-        </template>
-    </div>
-
-    <div data-controller="dynamic-table">
-        <h1>Fenotip yang dicari</h1>
-        <table class="dynamic-form-table">
-            <thead>
-                <tr>
-                    <th>Nomor</th>
-                    <th>Fenotip</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody data-dynamic-table-target="container">
+        <%# --- Bagian Fenotip yang Dicari --- %>
+        <div data-controller="dynamic-table" class="dynamic-section">
+            <h1>Fenotip yang dicari</h1>
+            <table class="dynamic-form-table">
+                <thead>
+                    <tr>
+                        <th>Nomor</th>
+                        <th>Fenotip</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody data-dynamic-table-target="container">
+                    <tr data-dynamic-table-target="row">
+                        <td>1</td>
+                        <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Hemophilia A" %></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="table-actions">
+                <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Fenotip</button>
+            </div>
+            <template data-dynamic-table-target="template">
                 <tr data-dynamic-table-target="row">
-                    <td>1</td>
-                    <td><input type="text" name="calculator[phenotypes][]" class="table-input" /></td>
                     <td></td>
+                    <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Cystic Fibrosis" %></td>
+                    <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
                 </tr>
-            </tbody>
-        </table>
-
-        <div class="table-actions">
-            <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Fenotip</button>
+            </template>
         </div>
 
-        <template data-dynamic-table-target="template">
-            <tr data-dynamic-table-target="row">
-                <td></td>
-                <td><input type="text" name="calculator[phenotypes][]" class="table-input" /></td>
-                <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
-            </tr>
-        </template>
-    </div>
+        <%# --- Tombol Submit Utama --- %>
+        <div class="table-actions">
+            <%= form.submit "Proses Data Genetik", class: "button-add-row" %>
+        </div>
+
+    <% end %> <%# Akhir dari form_with %>
+
+    <%# === BAGIAN UNTUK MENAMPILKAN HASIL === %>
+    <% if defined?(@processed_results) && @processed_results.present? %>
+      <section class="results-section dynamic-section" id="hasil-analisis" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
+        <h1>Ringkasan Hasil Analisis</h1>
+
+        <% @processed_results.each_with_index do |result, index| %>
+          <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
+            <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
+                Gen Input ke-<%= index + 1 %>: <strong><%= result["input_gene_name"] || "N/A" %></strong>
+            </h3>
+            
+            <% if result["error"] %>
+              <p style="color: #c53030; background-color: #fff5f5; border: 1px solid #fc8181; padding: 0.75rem; border-radius: 0.25rem; font-weight: bold;">
+                <strong>Error:</strong> <%= result["error"] %>
+              </p>
+            <% else %>
+              <div style="font-size: 0.95rem; line-height: 1.6;">
+                <p>
+                  <strong>Penyakit Terkait (dari OMIM):</strong> 
+                  <%= result["associated_disease_name"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
+                </p>
+                <p>
+                  <strong>Tipe Pewarisan:</strong> 
+                  <%= result["inheritance_type"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
+                </p>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </section>
+    <% elsif params[:action] == "process_genotype" && (!defined?(@processed_results) || @processed_results.blank?) %>
+        <section class="results-section dynamic-section" id="hasil-analisis-kosong" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
+            <h2>Hasil Analisis</h2>
+            <p>Tidak ada hasil untuk ditampilkan atau tidak ada input yang valid. Pastikan input gen sudah benar atau coba lagi.</p>
+        </section>
+    <% end %>
+    <%# === AKHIR BAGIAN HASIL === %>
+
 </main>

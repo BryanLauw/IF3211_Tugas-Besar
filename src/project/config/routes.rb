@@ -6,7 +6,9 @@ Rails.application.routes.draw do
   get "/concept", to: "home#concept"
   get "/about", to: "home#about"
 
-  get "/genotype", to: "calculator#genotype"
+  get "/genotype", to: "calculator#genotype", as: :genotype_calculator # Menambahkan 'as' untuk helper path
+  post "/calculator/process_genotype", to: "calculator#process_genotype", as: :process_genotype_calculator
+  
   get "/phenotype", to: "calculator#phenotype"
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
