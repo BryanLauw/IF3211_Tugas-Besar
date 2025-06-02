@@ -1,0 +1,421 @@
+/* Reset ================================ */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font: 100%/1.5 'Avenir Next', 'Hiragino Sans', sans-serif; /* 100% umumnya 16px */
+    line-height: 1.7;
+    letter-spacing: 0.0625rem; /* 1px / 16px */
+}
+
+ul, li {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+a {
+    text-decoration: none;
+    color: #000000;
+    font-size: 0.875rem; /* 14px / 16px */
+}
+
+h1, h2, h3, h4, h5, h6, p {
+    margin: 0;
+}
+
+input {
+    background-color: transparent;
+    outline-width: 0;
+}
+
+form input[type="submit"] {
+    border: none;
+    cursor: pointer;
+}
+
+/* Common Layout ================================ */
+body {
+    color: #000000;
+    background-color: #ffffff;
+    margin: 0;
+    min-height: 1vh; /* Ini nilai yang sangat kecil, mungkin maksudnya 100vh? Saya biarkan sesuai permintaan. */
+}
+
+.main {
+    position: relative; /* Diubah dari absolute agar flow lebih natural & .top-main/.about-main tidak tumpang tindih aneh */
+    padding-top: 4rem; /* 64px / 16px - Memberi ruang untuk header yang fixed/absolute */
+    width: 100%;
+    min-height: calc(100vh - 4rem); /* Mengisi sisa tinggi viewport setelah header */
+    background-color: #ffffff;
+}
+
+.container {
+    max-width: 37.5rem; /* 600px / 16px */
+    margin: 3.75rem auto; /* 60px / 16px */
+    padding-left: 0.9375rem; /* 15px / 16px */
+    padding-right: 0.9375rem; /* 15px / 16px */
+    clear: both;
+}
+
+/* Header (Navbar) ================================ */
+header {
+    height: 4rem; /* 64px / 16px */
+    position: fixed; /* Diubah ke fixed agar selalu di atas saat scroll */
+    top: 0;
+    left: 0;
+    z-index: 100; /* Pastikan di atas konten lain */
+    width: 100%;
+    background-color: #3ecdc6;
+}
+
+.header-logo {
+    float: left;
+    padding-left: 1.25rem; /* 20px / 16px */
+    color: #000000;
+    font-size: 1.375rem; /* 22px / 16px */
+    line-height: 4rem; /* 64px / 16px */
+}
+
+.header-logo a {
+    color: #000000;
+    font-size: 1.375rem; /* 22px / 16px */
+}
+
+.header-menus {
+    float: right;
+    padding-right: 1.25rem; /* 20px / 16px */
+}
+
+.header-menus li {
+    float: left;
+    line-height: 4rem; /* 64px / 16px */
+    font-size: 0.8125rem; /* 13px / 16px */
+    color: #000000;
+    padding-left: 0.9375rem; /* 15px / 16px */
+}
+
+.header-menus a {
+    float: left;
+    font-size: 0.8125rem; /* 13px / 16px */
+    color: #000000;
+}
+
+.header-menus .fa {
+    padding-right: 0.3125rem; /* 5px / 16px */
+    color: #000000;
+}
+
+.header-menus input[type="submit"] {
+    padding: 0 1.25rem; /* 20px / 16px */
+    float: left;
+    line-height: 4rem; /* 64px / 16px */
+    color: #000000;
+    margin: 0;
+    font-size: 0.8125rem; /* 13px / 16px */
+    background-color: transparent;
+}
+
+/* Top ================================ */
+.top-main {
+    /* padding: 200px 0 100px; diubah menjadi margin */
+    margin-top: 1.25rem; /* (200px - 64px header) / 16px atau nilai baru yang sesuai, misal 100px -> 6.25rem */
+                                 /* Atau jika ingin 200px dari bawah header: (200px actual) / 16px = 12.5rem */
+                                 /* Saya akan gunakan margin atas yang signifikan setelah header */
+    text-align: center;
+    /* position: absolute; top: 0; DIHAPUS agar tidak di belakang navbar */
+    width: 100%; /* Tetap full width untuk background jika ada, kontennya bisa di-center */
+    /* height: auto; min-height: 100%; DIHAPUS, biarkan flow natural */
+    color: #000000;
+    background-color: #ffffff; /* atau transparent jika ingin mewarisi dari .main */
+}
+
+.top-message {
+    position: relative; /* Tetap jika ada elemen absolute di dalamnya */
+    max-width: 45rem; /* Contoh max-width agar kontennya tidak terlalu lebar, dan bisa di-center */
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0.9375rem; /* Padding untuk konten internal jika diperlukan */
+    padding-right: 0.9375rem;
+}
+
+.top-main h2 {
+    font-size: 4.375rem; /* 70px / 16px */
+    font-weight: 500;
+    line-height: 1.3;
+    -webkit-font-smoothing: antialiased;
+    margin-bottom: 1.25rem; /* 20px / 16px */
+}
+
+.top-main p {
+    font-size: 1.5rem; /* 24px / 16px */
+}
+
+/* About ================================ */
+.about-main {
+    /* padding: 180px 8% 0; diubah menjadi margin */
+    margin-top: 5rem; /* Contoh: (180px - 64px) / 16px atau nilai baru, misal 80px -> 5rem */
+                           /* Atau jika ingin 180px dari bawah header: 180px / 16px = 11.25rem */
+    margin-left: 8%;
+    margin-right: 8%;
+    margin-bottom: 3.75rem; /* Tambahkan margin bawah agar ada spasi */
+    color: #000000;
+}
+
+.about-main h2 {
+    font-size: 4rem; /* 64px / 16px */
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 1rem; /* Tambahkan spasi bawah */
+}
+
+.about-main p {
+    font-weight: 200;
+    font-size: 1.25rem; /* 20px / 16px */
+}
+
+.about-img {
+    width: 84%;
+    margin-top: 1.25rem; /* Tambah spasi atas untuk gambar */
+    display: block; /* Agar margin auto bisa bekerja jika di-center */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.option {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;             
+    width: 90%;            
+    max-width: 25rem;      
+    margin-top: 2rem;      
+    margin-left: auto;     
+    margin-right: auto;    
+}
+
+.option a {
+    border: 1px solid black;
+    border-radius: 5px;
+    font-size: 1.5rem;
+    padding: .5rem;
+}
+
+/* Form ================================ */
+.form {
+    max-width: 37.5rem; /* 600px / 16px */
+    margin: 3.75rem auto; /* 60px / 16px (atas/bawah) auto (kiri/kanan) */
+    background-color: #ffffff;
+    box-shadow: 0 0.125rem 0.375rem #c1ced7; /* 0 2px 6px */
+    border-radius: 0.25rem; /* Tambahkan sedikit border-radius */
+}
+
+.form-heading {
+    font-weight: 300;
+    margin: 2.5rem 0 1.25rem; /* Disesuaikan: 40px atas, 20px bawah */
+    font-size: 3rem; /* 48px / 16px */
+    color: #000000;
+    text-align: center; /* Pusatkan heading form */
+}
+
+.form-body {
+    padding: 1.875rem; /* 30px / 16px */
+}
+
+.form-error {
+    color: #ff4d75;
+    margin-bottom: 0.625rem; /* 10px */
+    font-size: 0.875rem; /* 14px */
+}
+
+.form input {
+    width: 100%;
+    border: 0.0625rem solid #d8dadf; /* 1px */
+    padding: 0.625rem; /* 10px */
+    color: #000000;
+    font-size: 1rem; /* 16px */
+    letter-spacing: 0.0625rem; /* Disesuaikan dari 2px */
+    border-radius: 0.125rem; /* 2px */
+    background-color: #ffffff;
+    margin-bottom: 0.9375rem; /* Tambahkan margin bawah antar input: 15px */
+}
+.form input:last-child {
+    margin-bottom: 0; /* Hapus margin bawah untuk input terakhir sebelum submit */
+}
+
+
+.form textarea {
+    width: 100%;
+    min-height: 6.875rem; /* 110px / 16px */
+    font-size: 1rem; /* 16px */
+    letter-spacing: 0.0625rem; /* Disesuaikan dari 2px */
+    border: 0.0625rem solid #d8dadf; /* 1px */
+    padding: 0.625rem; /* 10px */
+    color: #000000;
+    background-color: #ffffff;
+    border-radius: 0.125rem; /* Samakan dengan input */
+    margin-bottom: 0.9375rem; /* Tambahkan margin bawah: 15px */
+}
+
+.form input[type="submit"] {
+    background-color: #3ecdc6;
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: 300;
+    width: 7.5rem; /* 120px / 16px */
+    border-radius: 0.125rem; /* 2px */
+    margin-top: 0.5rem; /* 8px / 16px */
+    margin-bottom: 0;
+    float: right;
+    padding: 0.625rem 0.9375rem; /* Sesuaikan padding agar proporsional */
+    font-size: 1rem; /* Samakan dengan input lain */
+    letter-spacing: normal; /* Reset letter-spacing untuk tombol */
+}
+
+.form-body:after {
+    content: '';
+    display: table;
+    clear: both;
+}
+
+/* Flash ================================ */
+.flash {
+    padding: 0.625rem 0; /* 10px / 16px */
+    color: #000000;
+    background: #ffffff;
+    border: 0.0625rem solid #eeeeee; /* 1px */
+    text-align: center;
+    position: relative; /* Diubah agar flow normal di dalam .main */
+    /* top: 4rem; DIHAPUS */
+    z-index: 10;
+    width: 100%;
+    border-radius: 0 0 0.125rem 0.125rem; /* 2px */
+    font-size: 0.875rem; /* 14px / 16px */
+    margin-bottom: 1.25rem; /* Beri jarak jika ada konten setelahnya */
+}
+
+
+/* posts/index ================================ */
+.posts-index-item {
+    padding: 1.25rem 1.875rem; /* 20px 30px */
+    background-color: #ffffff;
+    overflow: hidden;
+    box-shadow: 0 0.125rem 0.375rem #c1ced7; /* 0 2px 6px */
+    margin-bottom: 1.25rem; /* Tambahkan margin bawah antar item */
+    border-radius: 0.25rem; /* Sedikit radius */
+}
+
+.post-left img {
+    width: 3.125rem; /* 50px */
+    height: 3.125rem; /* 50px */
+    border-radius: 40%;
+    box-shadow: 0 0.125rem 0.375rem #c1ced7; /* 0 2px 6px */
+    object-fit: cover;
+}
+
+.post-user-name a {
+    font-weight: 600;
+}
+
+.post-user-name a:hover {
+    color: #3ecdc6;
+}
+
+.post-left {
+    float: left;
+    width: 15%; /* Sedikit diperbesar untuk mengakomodasi gambar dan sedikit ruang */
+    margin-right: 5%; /* Spasi antara kiri dan kanan */
+}
+
+.post-right {
+    float: left;
+    width: 80%; /* Disesuaikan */
+    /* padding-left: 1.5625rem; DIHAPUS, sudah dihandle margin-right dari .post-left */
+    text-align: left;
+}
+
+/* clearfix untuk .posts-index-item jika menggunakan float */
+.posts-index-item::after {
+    content: "";
+    clear: both;
+    display: table;
+}
+
+
+/* posts/show ================================ */
+.posts-show form {
+    display: inline;
+}
+
+.posts-show-item {
+    padding: 1.875rem; /* 30px */
+    background-color: #ffffff;
+    box-shadow: 0 0.125rem 0.375rem #c1ced7; /* 0 2px 6px */
+    overflow: hidden; /* Atau clearfix jika ada float di dalamnya */
+    border-radius: 0.25rem; /* Sedikit radius */
+}
+
+.posts-show-item img {
+    width: 3.75rem; /* 60px */
+    height: 3.75rem; /* 60px */
+    border-radius: 40%;
+    box-shadow: 0 0.125rem 0.375rem #c1ced7; /* 0 2px 6px */
+    vertical-align: middle;
+    object-fit: cover;
+}
+
+.posts-show-item .post-user-name a {
+    vertical-align: middle;
+    font-size: 1.5rem; /* 24px */
+    margin-left: 0.9375rem; /* 15px */
+}
+
+.posts-show-item p {
+    font-size: 1.25rem; /* Diubah dari 24px agar tidak sebesar username, atau 1.5rem jika ingin sama */
+    margin: 1.25rem 0; /* 20px */
+    line-height: 1.6; /* Tambahkan line-height untuk paragraf panjang */
+}
+
+.post-time {
+    color: #555555;
+    margin-bottom: 0.625rem; /* 10px */
+    font-size: 0.875rem; /* Kecilkan sedikit */
+}
+
+.post-menus {
+    float: right;
+    margin-top: 0.625rem; /* Beri sedikit jarak dari atas */
+}
+
+.post-menus a, .post-menus input {
+    color: #555555;
+    text-decoration: underline;
+    font-size: 0.875rem; /* 14px */
+    margin-left: 0.625rem; /* Beri jarak antar menu item */
+}
+.post-menus input {
+    background: none; /* Pastikan input type submit/button transparan */
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
+
+
+/* posts/new ================================ */
+.posts-new textarea { /* Ini bisa digabung dengan .form textarea jika stylenya sama */
+    font-size: 1.25rem; /* 20px */
+    padding: 0.625rem; /* 10px */
+    min-height: 8.75rem; /* 140px */
+    border: 0.0625rem solid rgb(216, 218, 223); /* 1px */
+    resize: vertical; /* Biarkan resize vertikal saja */
+    width: 100%; /* Pastikan width 100% */
+    border-radius: 0.125rem; /* Samakan dengan input */
+    color: #000000;
+    background-color: #ffffff;
+}
+
+.posts-new textarea::-webkit-input-placeholder {
+    font-size: 1.25rem; /* Disesuaikan dari 24px agar sama dengan font-size textarea */
+    opacity: 0.5;
+    color: #555555;
+}

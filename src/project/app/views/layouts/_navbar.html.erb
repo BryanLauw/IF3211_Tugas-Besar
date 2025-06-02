@@ -1,0 +1,14 @@
+<header>
+    <nav class="header-menus">
+        <ul>
+            <% unless request.path == root_path %>
+                <li class="header-logo">
+                    <%= link_to 'Halaman Utama', root_path %>
+                </li>
+            <% end %>
+            <li><%= link_to 'Konsep', concept_path %></li>
+            <li><%= link_to 'Cara Penggunaan', howtouse_path %></li>
+            <li><%= link_to 'Tentang Kami', about_path %></li>
+        </ul>
+    </nav>
+</header>
