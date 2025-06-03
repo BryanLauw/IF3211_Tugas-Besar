@@ -1,3 +1,58 @@
-<div class="about-main">
-    <h1>Konsep Perhitungan</h1>
-</div>
+<main class="main top-main">
+    <div class="top-message">
+        <h2>Concept</h2>
+    </div>
+
+    <div class="how-to-use-section">
+        <h1>Input by Genotype</h1>
+        <p>This outlines the process your data goes through after submission:</p>
+        <ul>
+            <li>
+                <p>
+                    <strong>1. Gene Identification:</strong> Each gene you input is first searched using the JAX Ontology API to retrieve its unique JAX Gene ID. This is done via: <br /><code class="api-endpoint"
+                        >https://ontology.jax.org/api/network/search/gene?q=[your_gene_name]&amp;limit=1</code
+                    >
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>2. Gene Annotation Retrieval:</strong> The JAX Gene ID obtained in the previous step is then used to fetch detailed gene annotations from the JAX API. This includes a list of diseases associated with that gene,
+                    using the endpoint: <br /><code class="api-endpoint">https://ontology.jax.org/api/network/annotation/[JAX_gene_id]</code>
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>3. Phenotype Matching & OMIM ID Extraction:</strong> The system reviews the list of diseases associated with the gene. For each disease that is an OMIM entry and its name matches one of the phenotypes you
+                    provided, its specific OMIM ID is identified.
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>4. OMIM Annotation & Inheritance Details:</strong> Each identified OMIM ID is then used to query the JAX API again. This call retrieves detailed OMIM annotations, crucially including the inheritance pattern for
+                    that specific disease/phenotype, from: <br /><code class="api-endpoint">https://ontology.jax.org/api/network/annotation/[OMIM_ID]</code>
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>5. Inheritance Category Identification:</strong> From the OMIM annotation details, the system extracts the inheritance category for the matched disease (e.g., Autosomal Dominant, Autosomal Recessive, X-linked
+                    Dominant, X-linked Recessive, or Y-linked).
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>6. Risk Calculation:</strong> Finally, the potential inheritance risk for offspring is calculated. This calculation uses the identified inheritance pattern and the parental zygosities you entered, applying
+                    principles similar to a Punnett square.
+                </p>
+            </li>
+        </ul>
+    </div>
+
+    <div class="how-to-use-section">
+        <h1>Input by Phenotype</h1>
+        <ul>
+            <li>
+                <p>Monggo diisi.</p>
+            </li>
+        </ul>
+    </div>
+</main>
