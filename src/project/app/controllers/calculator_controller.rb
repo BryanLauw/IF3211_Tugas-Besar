@@ -4,6 +4,7 @@ require 'cgi'
 
 class CalculatorController < ApplicationController
   JAX_API_BASE_URL = "https://ontology.jax.org/api/network"
+  API_TIMEOUT = 15
 
   def genotype
     @processed_results = flash[:kalkulasi_results_data] || []
@@ -256,29 +257,139 @@ class CalculatorController < ApplicationController
   end
 
   def process_phenotype
-    calculator_data = params[:calculator]
-    submitted_phenotypes = [] # Fenotip yang diinput pengguna
-    phenotypes_p1 = []
-    phenotypes_p2 = []
-    temp_result = []
+    calculator_params = params[:calculator]
 
-    if calculator_data.present?
-      # isi variabel di sini
-      submitted_phenotypes = calculator_data[:phenotypes]&.reject(&:blank?) || []
-      phenotypes_p1 = calculator_data[:phenotypes_p1]&.reject(&:blank?) || []
-      phenotypes_p2 = calculator_data[:phenotypes_p2]&.reject(&:blank?) || []
-    else
-      flash[:alert] = "Tidak ada data input yang diterima."
+    unless calculator_params.present? &&
+           calculator_params[:phenotypes].is_a?(Array) &&
+           calculator_params[:phenotypes_p1].is_a?(Array) &&
+           calculator_params[:phenotypes_p2].is_a?(Array)
+      flash[:alert] = "Data input tidak lengkap atau format salah. Mohon coba lagi."
       redirect_to phenotype_calculator_path
       return
     end
 
-    # cara ngasih ke fe, misalnya jadiin list json
-    submitted_phenotypes.each_with_index do |phenotype, index|
-      temp_result << {phenotype: phenotype, p1: phenotypes_p1[index], p2: phenotypes_p2[index]}
-    end
-    flash[:kalkulasi_results_data] = temp_result
+    raw_phenotypes = calculator_params[:phenotypes]
+    raw_phenotypes_p1 = calculator_params[:phenotypes_p1]
+    raw_phenotypes_p2 = calculator_params[:phenotypes_p2]
 
+    user_inputs = []
+    raw_phenotypes.each_with_index do |pheno_name, idx|
+      next if pheno_name.blank?
+      user_inputs << {
+        name: pheno_name,
+        p1: raw_phenotypes_p1[idx],
+        p2: raw_phenotypes_p2[idx]
+      }
+    end
+
+    if user_inputs.empty?
+      flash[:alert] = "Tidak ada nama fenotip valid yang diinput. Mohon isi setidaknya satu baris fenotip dengan lengkap."
+      redirect_to phenotype_calculator_path
+      return
+    end
+
+    processed_data_for_flash = []
+
+    user_inputs.each do |input_item|
+      current_result = {
+        "phenotype" => input_item[:name],
+        "p1" => input_item[:p1],
+        "p2" => input_item[:p2],
+        "input_phenotype_name" => input_item[:name],
+        "input_parent1_phenotype" => input_item[:p1],
+        "input_parent2_phenotype" => input_item[:p2],
+        "api_omim_id" => nil,
+        "api_disease_name" => nil,
+        "api_inheritance_type" => nil,
+        "api_gene_symbol" => nil,
+        "api_error" => nil
+      }
+
+      begin
+        disease_search_url = "#{JAX_API_BASE_URL}/search/disease?q=#{CGI.escape(input_item[:name])}&limit=-1"
+        disease_search_response = HTTParty.get(disease_search_url, timeout: API_TIMEOUT)
+
+        unless disease_search_response.success?
+          current_result["api_error"] = "Gagal menghubungi API pencarian penyakit (Status: #{disease_search_response.code})."
+          processed_data_for_flash << current_result
+          next
+        end
+
+        parsed_disease_search = disease_search_response.parsed_response
+        unless parsed_disease_search.is_a?(Hash) && parsed_disease_search['results'].is_a?(Array)
+          current_result["api_error"] = "Format respons API pencarian penyakit tidak sesuai."
+          processed_data_for_flash << current_result
+          next
+        end
+
+        omim_entries = parsed_disease_search['results'].select do |r|
+          r.is_a?(Hash) && r['id'].is_a?(String) && r['id'].start_with?("OMIM:")
+        end
+
+        selected_omim_entry = omim_entries.find do |r_omim|
+          r_omim['name'].is_a?(String) && r_omim['name'].casecmp(input_item[:name]) == 0
+        end
+
+        selected_omim_entry ||= omim_entries.find { |r_omim| r_omim['name'].is_a?(String) }
+        selected_omim_entry ||= omim_entries.first
+
+        unless selected_omim_entry && selected_omim_entry['id'].is_a?(String)
+          current_result["api_error"] = "Tidak ditemukan OMIM ID valid untuk fenotip '#{input_item[:name]}'."
+          processed_data_for_flash << current_result
+          next
+        end
+        
+        omim_id_from_api = selected_omim_entry['id']
+        name_from_api = selected_omim_entry['name']
+
+        current_result["api_omim_id"] = omim_id_from_api
+        current_result["api_disease_name"] = name_from_api.is_a?(String) ? name_from_api : nil
+
+
+        omim_annotation_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(omim_id_from_api)}"
+        omim_annotation_response = HTTParty.get(omim_annotation_url, timeout: API_TIMEOUT)
+
+        unless omim_annotation_response.success?
+          current_result["api_error"] = "Gagal mengambil anotasi untuk OMIM ID '#{omim_id_from_api}' (Status: #{omim_annotation_response.code})."
+          processed_data_for_flash << current_result
+          next
+        end
+        
+        parsed_omim_annotation = omim_annotation_response.parsed_response
+        unless parsed_omim_annotation.is_a?(Hash)
+          current_result["api_error"] = "Format respons API anotasi OMIM tidak sesuai."
+          processed_data_for_flash << current_result
+          next
+        end
+
+        inheritance_info = parsed_omim_annotation.dig('categories', 'Inheritance', 0, 'name')
+        if inheritance_info.is_a?(String) && inheritance_info.present?
+          current_result["api_inheritance_type"] = inheritance_info
+        else
+          current_result["api_error"] = [current_result["api_error"], "Info pewarisan tidak ditemukan atau format tidak sesuai."].compact.join(" ").strip
+        end
+
+        current_result["api_error"] = nil if current_result["api_error"].blank?
+
+      rescue HTTParty::Error, SocketError, Timeout::Error => e
+        Rails.logger.error "JAX API Network Error for phenotype '#{input_item&.[](:name) || 'unknown'}': #{e.class} - #{e.message}"
+        current_result["api_error"] = "Kesalahan jaringan atau timeout saat menghubungi JAX API: #{e.message}"
+      rescue StandardError => e
+        log_message = "Unexpected error processing phenotype "
+        log_message += (input_item && input_item[:name]) ? "'#{input_item[:name]}'" : "[unknown phenotype input]"
+        log_message += ": #{e.class} - #{e.message}"
+        if e.backtrace.is_a?(Array)
+          log_message += "\nBacktrace:\n#{e.backtrace.first(10).join("\n")}"
+        end
+        Rails.logger.error log_message
+        
+        current_result["api_error"] = "Terjadi kesalahan internal tidak terduga saat memproses fenotip. Silakan coba lagi."
+      ensure
+        processed_data_for_flash << current_result
+      end
+    end
+
+    flash[:kalkulasi_results_data] = processed_data_for_flash
     redirect_to phenotype_calculator_path
   end
 end

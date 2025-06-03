@@ -69,16 +69,17 @@
                 <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
                     <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
                         Input ke-<%= index + 1 %>: <strong><%= result["phenotype"] || "N/A" %></strong>
+                        (<%= result["api_disease_name"] || "Nama API tidak ditemukan" %>)
                     </h3>
+                    <p><strong>Fenotip P1:</strong> <%= result["p1"] %></p>
+                    <p><strong>Fenotip P2:</strong> <%= result["p2"] %></p>
 
-                    <p>
-                        <strong>Fenotip P1:</strong> 
-                        <%= result["p1"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
-                    </p>
-                    <p>
-                        <strong>Fenotip P2:</strong> 
-                        <%= result["p2"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
-                    </p>
+                    <% if result["api_error"] %>
+                        <p style="color: red;"><strong>Error:</strong> <%= result["api_error"] %></p>
+                    <% else %>
+                        <p><strong>OMIM ID:</strong> <%= result["api_omim_id"] || "Tidak ditemukan" %></p>
+                        <p><strong>Tipe Pewarisan:</strong> <%= result["api_inheritance_type"] || "Tidak ditemukan" %></p>
+                    <% end %>
                 </div>
             <% end %>
         </section>
