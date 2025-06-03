@@ -17,8 +17,8 @@
                     <tr>
                         <th>Nomor</th>
                         <th>Fenotip</th>
-                        <th>Fenotip P1</th>
-                        <th>Fenotip P2</th>
+                        <th>Fenotip Ibu</th>
+                        <th>Fenotip Ayah</th>
                         <th>Aksi</th>
                     </tr>   
                 </thead>
@@ -60,33 +60,88 @@
         </div>
     <% end %> <%# Akhir dari form_with %>
 
-    <%# === BAGIAN UNTUK MENAMPILKAN HASIL === %>
     <% if defined?(@processed_results) && @processed_results.present? %>
-        <section class="results-section dynamic-section" id="hasil-analisis" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
-            <h1>Input user</h1>
+    <section class="results-section dynamic-section" id="hasil-input-user" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
+        <h1>Input User dan Data API</h1>
+        <% @processed_results.each_with_index do |result, index| %>
+            <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
+                <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
+                    Input ke-<%= index + 1 %>: <strong><%= result["phenotype"] || "N/A" %></strong>
+                    (<%= result["api_disease_name"] || "Nama API tidak ditemukan" %>)
+                </h3>
+                <p><strong>Fenotip P1 (Ibu):</strong> <%= result["input_parent1_phenotype"] %></p>
+                <p><strong>Fenotip P2 (Ayah):</strong> <%= result["input_parent2_phenotype"] %></p>
 
-            <% @processed_results.each_with_index do |result, index| %>
-                <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
-                    <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
-                        Input ke-<%= index + 1 %>: <strong><%= result["phenotype"] || "N/A" %></strong>
-                        (<%= result["api_disease_name"] || "Nama API tidak ditemukan" %>)
-                    </h3>
-                    <p><strong>Fenotip P1:</strong> <%= result["p1"] %></p>
-                    <p><strong>Fenotip P2:</strong> <%= result["p2"] %></p>
+                <% if result["api_error"] %>
+                    <p style="color: red;"><strong>API Error:</strong> <%= result["api_error"] %></p>
+                <% else %>
+                    <p><strong>OMIM ID:</strong> <%= result["api_omim_id"] || "Tidak ditemukan" %></p>
+                    <p><strong>Tipe Pewarisan dari API:</strong> <%= result["api_inheritance_type"] || "Tidak ditemukan" %></p>
+                <% end %>
+            </div>
+        <% end %>
+    </section>
+    <% end %>
 
-                    <% if result["api_error"] %>
-                        <p style="color: red;"><strong>Error:</strong> <%= result["api_error"] %></p>
-                    <% else %>
-                        <p><strong>OMIM ID:</strong> <%= result["api_omim_id"] || "Tidak ditemukan" %></p>
-                        <p><strong>Tipe Pewarisan:</strong> <%= result["api_inheritance_type"] || "Tidak ditemukan" %></p>
+    <% if defined?(@single_disease_details_all) && @single_disease_details_all.present? %>
+    <section class="results-section dynamic-section" id="hasil-kalkulasi-detail" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #aaa;">
+        <h1>Detail Kalkulasi Mendel per Penyakit</h1>
+        <% @single_disease_details_all.each_with_index do |calc_detail, index| %>
+            <div class="calculation-detail-item" style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid #bbb; border-radius: 0.3rem; background-color: #f0f8ff;">
+                <h2 style="margin-top:0; font-size: 1.4rem; color: #1a237e;">
+                    Kalkulasi untuk: <%= calc_detail[:phenotype_name] || "Penyakit Tidak Diketahui" %>
+                </h2>
+
+                <% if calc_detail[:error] %>
+                    <p style="color: red; font-weight: bold;">Error Kalkulasi: <%= calc_detail[:error] %></p>
+                <% else %>
+                    <p><strong>Tipe Pewarisan Digunakan:</strong> <%= calc_detail[:inheritance_type] %></p>
+                    <p><strong>Fenotip Ibu (P1):</strong> <%= calc_detail[:parent1_phenotype_status] %></p>
+                    <p><strong>Fenotip Ayah (P2):</strong> <%= calc_detail[:parent2_phenotype_status] %></p>
+                    <hr style="margin: 1rem 0;">
+
+                    <h4>Kemungkinan Genotip Orang Tua:</h4>
+                    <p><strong>Ibu:</strong> <%= calc_detail[:possible_mother_genotypes]&.join(", ") || "Tidak ada" %></p>
+                    <p><strong>Ayah:</strong> <%= calc_detail[:possible_father_genotypes]&.join(", ") || "Tidak ada" %></p>
+                    <p><em>Total skenario pasangan genotip orang tua: <%= calc_detail[:num_parent_genotype_scenarios] %></em></p>
+                    <hr style="margin: 1rem 0;">
+
+                    <h4>Detail Per Skenario Genotip Orang Tua:</h4>
+                    <% calc_detail[:parent_genotype_scenarios_details]&.each_with_index do |scenario, s_idx| %>
+                        <div class.scenario-detail style="margin-left: 20px; margin-bottom: 1rem; padding: 0.5rem; border: 1px dashed #ccc;">
+                            <strong>Skenario <%= s_idx + 1 %>: Ibu (<%= scenario[:mother_genotype] %>) x Ayah (<%= scenario[:father_genotype] %>)</strong>
+                            <p style="margin-left:15px;">Probabilitas Genotip Anak:</p>
+                            <ul style="margin-left:30px;">
+                                <% scenario[:offspring_genotype_probabilities]&.each do |geno, prob| %>
+                                    <li><%= geno %>: <%= (prob * 100).round(2) %>%</li>
+                                <% end %>
+                            </ul>
+                            <p style="margin-left:15px;">Probabilitas Fenotip Anak (untuk skenario ini):</p>
+                            <ul style="margin-left:30px;">
+                                <% scenario[:offspring_phenotype_probabilities]&.each do |pheno, prob| %>
+                                    <li><%= pheno %>: <%= (prob * 100).round(2) %>%</li>
+                                <% end %>
+                            </ul>
+                        </div>
                     <% end %>
-                </div>
-            <% end %>
-        </section>
-    <% elsif params[:action] == "process_genotype" && (!defined?(@processed_results) || @processed_results.blank?) %>
-        <section class="results-section dynamic-section" id="hasil-analisis-kosong" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
-            <h1>Input user</h1>
-            <p>Tidak ada hasil untuk ditampilkan atau tidak ada input yang valid. Pastikan input gen sudah benar atau coba lagi.</p>
-        </section>
+                    <hr style="margin: 1rem 0;">
+
+                    <h4>Hasil Akhir Probabilitas Anak (Rata-rata dari semua skenario):</h4>
+                    <p><strong>Probabilitas Genotip Anak:</strong></p>
+                    <ul style="margin-left:15px;">
+                        <% calc_detail[:final_average_offspring_genotype_probabilities]&.each do |geno, prob| %>
+                            <li><%= geno %>: <%= (prob * 100).round(2) %>%</li>
+                        <% end %>
+                    </ul>
+                    <p><strong>Probabilitas Fenotip Anak:</strong></p>
+                    <ul style="margin-left:15px;">
+                        <% calc_detail[:final_average_offspring_phenotype_probabilities]&.each do |pheno, prob| %>
+                            <li><%= pheno %>: <%= (prob * 100).round(2) %>%</li>
+                        <% end %>
+                    </ul>
+                <% end %>
+            </div>
+        <% end %>
+    </section>
     <% end %>
 </main>
