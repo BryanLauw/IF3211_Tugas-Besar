@@ -1,133 +1,223 @@
 <main class="main top-main">
-    <h2>Perhitungan dengan Hasil Tes DNA</h2>
+  <h2>DNA Test Result Calculation</h2>
 
-    <% if flash[:alert] %>
-      <div class="flash-message alert" style="background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:alert] %></div>
-    <% end %>
-    <% if flash[:info] %>
-      <div class="flash-message info" style="background-color: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:info] %></div>
-    <% end %>
+  <%# Display flash messages %>
+  <% if flash[:alert] %>
+    <div class="flash-message alert" style="background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:alert] %></div>
+  <% end %>
+  <% if flash[:info] %>
+    <div class="flash-message info" style="background-color: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:info] %></div>
+  <% end %>
+  <% if flash[:notice] %> <%# Added for completeness %>
+    <div class="flash-message notice" style="background-color: #e6fffa; border: 1px solid #87e8de; color: #006d75; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:notice] %></div>
+  <% end %>
 
-    <%= form_with(url: process_genotype_calculator_path, method: :post, local: true, data: { turbo: false }, html: { class: "main-calculator-form" }) do |form| %>
-        <%# --- Bagian Gen Orang Tua --- %>
-        <div data-controller="dynamic-table" class="dynamic-section">
-            <h1>Gen Orang Tua</h1>
-            <table class="dynamic-form-table">
-                <thead>
-                    <tr>
-                        <th>Nomor</th>
-                        <th>Gen</th>
-                        <th>Zigositas P1</th>
-                        <th>Zigositas P2</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody data-dynamic-table-target="container">
-                    <tr data-dynamic-table-target="row">
-                        <td>1</td>
-                        <td><%= text_field_tag "calculator[genes][]", nil, class: "table-input", placeholder: "Contoh: F8" %></td>
-                        <td>
-                            <%= select_tag "calculator[zygosities_p1][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
-                        </td>
-                        <td>
-                            <%= select_tag "calculator[zygosities_p2][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
-                        </td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="table-actions">
-                <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Genotip</button>
-            </div>
-            <template data-dynamic-table-target="template">
-                <tr data-dynamic-table-target="row">
-                    <td></td>
-                    <td><%= text_field_tag "calculator[genes][]", nil, class: "table-input", placeholder: "Contoh: CFTR" %></td>
-                    <td>
-                        <%= select_tag "calculator[zygosities_p1][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
-                    </td>
-                    <td>
-                        <%= select_tag "calculator[zygosities_p2][]", options_for_select([["Homozygot", "Homozygot"], ["Heterozygot", "Heterozygot"]]), class: "table-select" %>
-                    </td>
-                    <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
-                </tr>
-            </template>
-        </div>
+  <%= form_with(url: process_genotype_calculator_path, method: :post, local: true, data: { turbo: false }, html: { class: "main-calculator-form" }) do |form| %>
+    <%# --- Bagian Gen Orang Tua --- %>
+    <div data-controller="dynamic-table" class="dynamic-section">
+      <h1>Parent's Gene</h1>
+      <table class="dynamic-form-table">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Gene</th>
+            <th>Father's Zygosities</th>
+            <th>Mother's Zygosities</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody data-dynamic-table-target="container">
+          <%
+            submitted_genes = @form_params.dig("genes") || []
+            submitted_zygosities_p1 = @form_params.dig("zygosities_p1") || []
+            submitted_zygosities_p2 = @form_params.dig("zygosities_p2") || []
+            zygosity_options = [["None", "None"], ["Homozygot Dominant", "Homozygot Dominant"], ["Heterozygot", "Heterozygot"], ["Homozygot Recessive", "Homozygot Recessive"]]
+          %>
 
-        <%# --- Bagian Fenotip yang Dicari --- %>
-        <div data-controller="dynamic-table" class="dynamic-section">
-            <h1>Fenotip yang dicari</h1>
-            <table class="dynamic-form-table">
-                <thead>
-                    <tr>
-                        <th>Nomor</th>
-                        <th>Fenotip</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody data-dynamic-table-target="container">
-                    <tr data-dynamic-table-target="row">
-                        <td>1</td>
-                        <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Hemophilia A" %></td>
-                        <td></td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="table-actions">
-                <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Fenotip</button>
-            </div>
-            <template data-dynamic-table-target="template">
-                <tr data-dynamic-table-target="row">
-                    <td></td>
-                    <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Cystic Fibrosis" %></td>
-                    <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
-                </tr>
-            </template>
-        </div>
+          <% if submitted_genes.any? %>
+            <% submitted_genes.each_with_index do |gene_value, i| %>
+              <tr data-dynamic-table-target="row">
+                <td><%= i + 1 %></td>
+                <td><%= text_field_tag "calculator[genes][]", gene_value, class: "table-input", placeholder: "Ex.: F8" %></td>
+                <td>
+                  <%= select_tag "calculator[zygosities_p1][]", options_for_select(zygosity_options, submitted_zygosities_p1[i]), class: "table-select" %>
+                </td>
+                <td>
+                  <%= select_tag "calculator[zygosities_p2][]", options_for_select(zygosity_options, submitted_zygosities_p2[i]), class: "table-select" %>
+                </td>
+                <td>
+                  <% if i > 0 %>
+                    <button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <%# Default first empty row if no previous input %>
+            <tr data-dynamic-table-target="row">
+              <td>1</td>
+              <td><%= text_field_tag "calculator[genes][]", nil, class: "table-input", placeholder: "Ex.: F8" %></td>
+              <td>
+                <%= select_tag "calculator[zygosities_p1][]", options_for_select(zygosity_options), class: "table-select" %>
+              </td>
+              <td>
+                <%= select_tag "calculator[zygosities_p2][]", options_for_select(zygosity_options), class: "table-select" %>
+              </td>
+              <td></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      <div class="table-actions">
+        <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Add Genotype</button>
+      </div>
+      <template data-dynamic-table-target="template">
+        <tr data-dynamic-table-target="row">
+          <td></td> <%# Number will be filled by JS %>
+          <td><%= text_field_tag "calculator[genes][]", nil, class: "table-input", placeholder: "Ex.: F8", disabled: true %></td>
+          <td>
+            <%# Ensure options here match the initial row for consistency if needed %>
+            <%= select_tag "calculator[zygosities_p1][]", options_for_select(zygosity_options), class: "table-select", disabled: true %>
+          </td>
+          <td>
+            <%= select_tag "calculator[zygosities_p2][]", options_for_select(zygosity_options), class: "table-select", disabled: true %>
+          </td>
+          <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
+        </tr>
+      </template>
+    </div>
 
-        <%# --- Tombol Submit Utama --- %>
-        <div class="table-actions">
-            <%= form.submit "Proses Data Genetik", class: "button-add-row" %>
-        </div>
+    <%# --- Bagian Fenotip yang Dicari --- %>
+    <div data-controller="dynamic-table" class="dynamic-section">
+      <h1>Phenotypes you're looking for</h1>
+      <table class="dynamic-form-table">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Phenotype</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody data-dynamic-table-target="container">
+          <% submitted_phenotypes = @form_params.dig("phenotypes") || [] %>
+          <% if submitted_phenotypes.any? %>
+            <% submitted_phenotypes.each_with_index do |phenotype_value, i| %>
+              <tr data-dynamic-table-target="row">
+                <td><%= i + 1 %></td>
+                <td><%= text_field_tag "calculator[phenotypes][]", phenotype_value, class: "table-input", placeholder: "Ex.: Hemophilia A" %></td>
+                <td>
+                  <% if i > 0 %>
+                    <button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          <% else %>
+            <%# Default first empty row %>
+            <tr data-dynamic-table-target="row">
+              <td>1</td>
+              <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Ex.: Hemophilia A" %></td>
+              <td></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      <div class="table-actions">
+        <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Add Phenotype</button>
+      </div>
+      <template data-dynamic-table-target="template">
+        <tr data-dynamic-table-target="row">
+          <td></td> <%# Number will be filled by JS %>
+          <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Ex.: Hemophilia A", disabled: true %></td>
+          <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
+        </tr>
+      </template>
+    </div>
 
-    <% end %> <%# Akhir dari form_with %>
+    <%# --- Tombol Submit Utama --- %>
+    <div class="table-actions">
+      <%= form.submit "Process the Data", class: "button-add-row" %>
+    </div>
+  <% end %>
 
-    <%# === BAGIAN UNTUK MENAMPILKAN HASIL === %>
-    <% if defined?(@processed_results) && @processed_results.present? %>
-      <section class="results-section dynamic-section" id="hasil-analisis" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
-        <h1>Ringkasan Hasil Analisis</h1>
-
-        <% @processed_results.each_with_index do |result, index| %>
-          <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
-            <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
-                Gen Input ke-<%= index + 1 %>: <strong><%= result["input_gene_name"] || "N/A" %></strong>
-            </h3>
-            
-            <% if result["error"] %>
-              <p style="color: #c53030; background-color: #fff5f5; border: 1px solid #fc8181; padding: 0.75rem; border-radius: 0.25rem; font-weight: bold;">
-                <strong>Error:</strong> <%= result["error"] %>
-              </p>
+  <%# === BAGIAN UNTUK MENAMPILKAN HASIL === %>
+  <%# ... (your existing results display code remains the same) ... %>
+  <% if defined?(@processed_results) && @processed_results.present? %>
+    <section class="results-section dynamic-section" id="hasil-analisis">
+      <h2>Calculation Result</h2>
+      <% @processed_results.each_with_index do |result, index| %>
+      <div class="result-item">
+        <h3>
+        Gene: <strong><%= result["input_gene_name"] || "N/A" %></strong>
+        </h3>
+        <% if result["error"] %>
+        <p class="result-item-error">
+          <strong>Error:</strong> <%= result["error"] %>
+        </p>
+        <% else %>
+        <div class="result-item-details">
+          <p>
+          <strong>Correlated disease (from OMIM):</strong> 
+          <%= result["associated_disease_name"].presence || "<span class='data-na-span'>Not found/not relevant</span>".html_safe %>
+          </p>
+          <p>
+          <strong>Inheritance type:</strong> 
+          <%= result["inheritance_type"].presence || "<span class='data-na-span'>Not found/not relevant</span>".html_safe %>
+          </p>
+          <% calc_res = result["calculation_result"] %>
+          <% if calc_res.present? %>
+          <div class="calculation-details">
+            <h4>Inheritance Risk Calculation:</h4>
+            <% if calc_res["fault"] %>
+            <p class="calculation-fault"><%= calc_res["fault"] %></p>
             <% else %>
-              <div style="font-size: 0.95rem; line-height: 1.6;">
-                <p>
-                  <strong>Penyakit Terkait (dari OMIM):</strong> 
-                  <%= result["associated_disease_name"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
-                </p>
-                <p>
-                  <strong>Tipe Pewarisan:</strong> 
-                  <%= result["inheritance_type"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
-                </p>
-              </div>
+            <% if calc_res.dig("girls", "percentage").present? || calc_res.dig("girls", "carrier").present? %>
+            <%
+              boys_percentage_display = calc_res["boys"].present? ? "#{calc_res["boys"]}%" : "0%"
+              girls_affected_display = calc_res.dig("girls", "percentage").present? ? "#{calc_res.dig("girls", "percentage")}%" : "0%"
+              carrier_info_html = ""
+              if calc_res.dig("girls", "carrier").present?
+                  carrier_info_html = "<br>Carrier Girls = #{calc_res.dig("girls", "carrier")}%"
+              end
+              %>
+            <p>
+              <strong>Affected descendant percentage:</strong><br>
+              Boys = <%= boys_percentage_display %><br>
+              Girls = <%= girls_affected_display %><%= carrier_info_html.html_safe %>
+            </p>
+            <% elsif calc_res["boys"].present? %>
+            <p>
+              <strong>Affected descendant percentage:</strong><br>
+              Boys = <%= calc_res["boys"] %>%<br>
+              Girls = 0%
+            </p>
+            <% elsif calc_res["kids"].present? %>
+            <p>
+              <strong>Affected descendant percentage:</strong> <%= calc_res["kids"] %>%
+            </p>
+            <% else %>
+            <p class="calculation-na-message"><em>Can't be calculated.</em></p>
+            <% end %>
             <% end %>
           </div>
+          <% else %>
+          <p class="calculation-na-message">Data not found.</p>
+          <% end %>
+        </div>
         <% end %>
-      </section>
-    <% elsif params[:action] == "process_genotype" && (!defined?(@processed_results) || @processed_results.blank?) %>
-        <section class="results-section dynamic-section" id="hasil-analisis-kosong" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
-            <h2>Hasil Analisis</h2>
-            <p>Tidak ada hasil untuk ditampilkan atau tidak ada input yang valid. Pastikan input gen sudah benar atau coba lagi.</p>
-        </section>
+      </div>
+      <% end %>
+    </section>
+  <% elsif params[:controller] == "calculator" && params[:action] == "genotype" && @form_params.present? && (!defined?(@processed_results) || @processed_results.blank?) %>
+    <%# This condition is to show "no results" only if form was submitted but yielded no displayable results, not on initial load %>
+    <%# However, your original check was params[:action] == "process_genotype", which won't be true when rendering the 'genotype' view. %>
+    <%# A better check might be if @form_params is present (meaning a submission happened) but @processed_results is empty. %>
+    <% if @form_params.present? && @processed_results.blank? && flash.empty? %>
+    <section class="results-section dynamic-section" id="hasil-analisis-kosong">
+      <h2>Calculation Result</h2>
+      <p>No result.</p>
+    </section>
     <% end %>
-    <%# === AKHIR BAGIAN HASIL === %>
+  <% end %>
 
 </main>

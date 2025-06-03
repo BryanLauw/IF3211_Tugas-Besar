@@ -6,85 +6,241 @@ class CalculatorController < ApplicationController
   JAX_API_BASE_URL = "https://ontology.jax.org/api/network"
 
   def genotype
-    @processed_results = flash[:kalkulasi_results_data] || []
+    @form_params = session.delete(:last_calculator_input) || {}
+    @processed_results = session.delete(:kalkulasi_results_data) || []
+  end
+
+  def get_alleles(zygosity)
+    case zygosity
+    when "Homozygot Dominant"
+      ["A", "A"]
+    when "Heterozygot"
+      ["A", "a"]
+    else
+      ["a", "a"]
+    end
+  end
+
+  def get_alleles_X_linked(zygosity, male)
+    if male
+      if zygosity == "Heterozygot"
+        return ["XA", "Y"]
+      else
+        return ["Xa", "Y"]
+      end
+    else
+      if zygosity == "Homozygot Dominant"
+        return ["XA", "XA"]
+      elsif zygosity == "Heterozygot"
+        return ["XA", "Xa"]
+      else
+        return ["Xa", "Xa"]
+      end
+    end
+  end
+
+  def calculate_genotype(gene_name, diesease_name, inheritance_type, father_zygosity, mother_zygosity)
+    retVal = {
+      kids: nil,
+      boys: nil,
+      girls: {
+        percentage: nil,
+        carrier: nil
+      },
+      fault: nil
+    }
+
+    case inheritance_type
+
+    when "Autosomal dominant inheritance"
+      if father_zygosity == "None" || mother_zygosity == "None"
+        retVal[:fault] = "Error: For autosomal inheritance, neither parent's zygosity can be 'None'."
+      else
+        f = get_alleles(father_zygosity)
+        m = get_alleles(mother_zygosity)
+
+        combinations = f.product(m).map { |a1, a2| [a1, a2].join }
+        affected = combinations.count { |geno| geno.include?("A") }
+
+        retVal[:kids] = ((affected.to_f / combinations.size) * 100).round(2)
+      end
+
+    when "Autosomal recessive inheritance"
+      if father_zygosity == "None" || mother_zygosity == "None"
+        retVal[:fault] = "Error: For autosomal inheritance, neither parent's zygosity can be 'None'."
+      else
+        f = get_alleles(father_zygosity)
+        m = get_alleles(mother_zygosity)
+
+        combinations = f.product(m).map { |a1, a2| [a1, a2].join }
+        affected = combinations.count { |geno| geno == "aa" }
+
+        retVal[:kids] = ((affected.to_f / combinations.size) * 100).round(2)
+      end
+
+    when "X-linked dominant inheritance"
+      if father_zygosity == "Homozygot Dominant"
+        retVal[:fault] = "Error: father must be Heterozygot or Homozygot Recessive in X-linked inheritance."
+      else
+        f = get_alleles_X_linked(father_zygosity, true)
+        m = get_alleles_X_linked(mother_zygosity, false)
+
+        combinations = f.product(m).map { |a1, a2| [a1, a2].join }
+
+        affected_boys = combinations.count { |geno| geno == "YXA" }
+        boys_count = combinations.count { |geno| geno.include?("Y") }
+
+        affected_girls = combinations.count do |geno|
+          !geno.include?("Y") && geno.include?("XA")
+        end
+        girls_count = combinations.count { |geno| !geno.include?("Y") }
+
+        retVal[:boys] = ((affected_boys.to_f / boys_count) * 100).round(2)
+        
+        retVal[:girls] = {
+          percentage: ((affected_girls.to_f / girls_count) * 100).round(2),
+          carrier: nil
+        }
+      end
+
+    when "X-linked recessive inheritance"
+      if father_zygosity == "Homozygot Dominant"
+        retVal[:fault] = "Error: father must be Heterozygot or Homozygot Recessive in X-linked inheritance."
+      else
+        f = father_zygosity == "None" ? ["XA", "Y"] : get_alleles_X_linked(father_zygosity, true)
+        m = get_alleles_X_linked(mother_zygosity, false)
+
+        combinations = f.product(m).map { |a1, a2| [a1, a2].join }
+
+        affected_boys = combinations.count { |geno| geno == "YXa" }
+        boys_count = combinations.count { |geno| geno.include?("Y") }
+
+        affected_girls = combinations.count { |geno| geno == "XaXa" }
+        carrier_girls = combinations.count do |geno|
+          ["XAXa", "XaXA"].include?(geno)
+        end
+        girls_count = combinations.count { |geno| !geno.include?("Y") }
+
+        retVal[:boys] = ((affected_boys.to_f / boys_count) * 100).round(2)
+        
+        retVal[:girls] = {
+          percentage: ((affected_girls.to_f / girls_count) * 100).round(2),
+          carrier: ((carrier_girls.to_f / girls_count) * 100).round(2)
+        }
+      end
+
+    when "Y-linked inheritance"
+      if mother_zygosity != "None"
+        retVal[:fault] = "Error: Y-linked inheritance cannot involve maternal zygosity. Only males inherit the Y chromosome from their father."
+      elsif father_zygosity != "Heterozygot"
+        retVal[:fault] = "Error: father must be Heterozygot in Y-linked inheritance."
+      else
+        retVal[:boys] = 100.00
+      end
+
+    when "Mitochondrial inheritance"
+      if mother_zygosity == "None"
+        retVal[:fault] = "Error: Mitochondrial inheritance only involve maternal zygosity."
+      elsif father_zygosity != "None"
+        retVal[:fault] = "Error: Father's zygosity for Mitochondrial inheritance must be None."
+      else
+        retVal[:kids] = 100.00
+      end
+
+    else # Anggap Autosomal dominant inheritance
+      if father_zygosity == "None" || mother_zygosity == "None"
+        retVal[:fault] = "Error: For autosomal inheritance, neither parent's zygosity can be 'None'."
+      else
+        f = get_alleles(father_zygosity)
+        m = get_alleles(mother_zygosity)
+
+        combinations = f.product(m).map { |a1, a2| [a1, a2].join }
+        affected = combinations.count { |geno| geno.include?("A") }
+
+        retVal[:kids] = ((affected.to_f / combinations.size) * 100).round(2)
+      end
+    end
+
+    return retVal
   end
 
   def process_genotype
     calculator_data = params[:calculator]
     submitted_genes = []
-    searched_phenotypes = [] # Fenotip yang dicari pengguna
+    searched_phenotypes = [] # User-searched phenotypes
     zygosities_p1 = []
     zygosities_p2 = []
 
     if calculator_data.present?
+      permitted_input_params = calculator_data.permit(genes: [], zygosities_p1: [], zygosities_p2: [], phenotypes: [])
+      session[:last_calculator_input] = permitted_input_params.to_h
       submitted_genes = calculator_data[:genes]&.reject(&:blank?) || []
       searched_phenotypes = calculator_data[:phenotypes]&.reject(&:blank?) || []
       zygosities_p1 = calculator_data[:zygosities_p1]&.reject(&:blank?) || []
       zygosities_p2 = calculator_data[:zygosities_p2]&.reject(&:blank?) || []
     else
-      flash[:alert] = "Tidak ada data input yang diterima."
+      session[:alert] = "Input data not received." # Diubah dari "Input not found." untuk kejelasan
       redirect_to genotype_calculator_path
       return
     end
 
     temp_results = []
 
-    # Validasi awal: harus ada gen DAN fenotip yang dicari jika kita hanya mau menyimpan yang cocok
+    # Initial validation: genes AND searched phenotypes are required if we only want to save matches
     if submitted_genes.empty?
-      flash[:alert] = "Input gen diperlukan."
+      session[:alert] = "Gene inputs are required."
       redirect_to genotype_calculator_path
       return
     elsif searched_phenotypes.empty?
-      flash[:alert] = "Input fenotip yang dicari diperlukan untuk menampilkan hasil."
-      # Atau Anda bisa memilih untuk tetap memproses dan menampilkan info gen dasar jika fenotip kosong,
-      # tergantung kebutuhan akhir. Untuk permintaan ini, kita anggap fenotip harus ada untuk hasil.
+      session[:alert] = "Searched phenotype input is required to display results."
       redirect_to genotype_calculator_path
       return
     end
 
-    submitted_genes.each do |gene_name|
-      # Hash sementara untuk menyimpan semua data dari API untuk satu gen ini
-      # Kita akan mengumpulkan semua info dulu, baru memutuskan apakah akan dimasukkan ke flash_item_result
+    # Validate zygosity array lengths (Important!)
+    unless submitted_genes.length == zygosities_p1.length && submitted_genes.length == zygosities_p2.length
+      session[:alert] = "Zygosity data is incomplete or does not match the number of genes submitted. Please check your input."
+      redirect_to genotype_calculator_path
+      return
+    end
+
+    submitted_genes.each_with_index do |gene_name, index|
       api_data_for_gene = {
         gene_name: gene_name,
         jax_gene_id: nil,
         selected_omim_id: nil,
         omim_main_disease_name: nil,
         inheritance_type: nil,
-        # Untuk menampung semua fenotip terkait OMIM dari API, bukan hanya yang cocok
-        # Ini bisa berguna jika Anda ingin menampilkan semua fenotip terkait jika tidak ada yang cocok dengan input pengguna
         all_related_omim_phenotypes: [], 
         error_message: nil
       }
-      puts "MEMPROSES GEN: #{gene_name}"
+      puts "PROCESSING GENE: #{gene_name}" # Sudah Inggris
 
       begin
         # 1a. Search Gene
         gene_search_url = "#{JAX_API_BASE_URL}/search/gene?q=#{CGI.escape(gene_name)}&limit=1"
-        puts "  1a. URL Gene Search: #{gene_search_url}"
+        puts "  1a. Gene Search URL: #{gene_search_url}" # Sudah Inggris
         gene_search_response = HTTParty.get(gene_search_url, timeout: 15)
 
         unless gene_search_response.success? && (parsed_gene_search = gene_search_response.parsed_response).is_a?(Hash) &&
-               parsed_gene_search['results'].is_a?(Array) && !parsed_gene_search['results'].empty? &&
-               (first_gene_result = parsed_gene_search['results'].first).is_a?(Hash) && first_gene_result['id'].present?
-          api_data_for_gene[:error_message] = "Gen '#{gene_name}' tidak ditemukan atau format API search tidak sesuai. (Status: #{gene_search_response.code rescue 'N/A'})"
-          # Catat error tapi jangan langsung next, kita mungkin ingin menyimpan info gen input dengan errornya
-          # (akan diputuskan nanti apakah akan dimasukkan ke temp_results)
+              parsed_gene_search['results'].is_a?(Array) && !parsed_gene_search['results'].empty? &&
+              (first_gene_result = parsed_gene_search['results'].first).is_a?(Hash) && first_gene_result['id'].present?
+          api_data_for_gene[:error_message] = "Gene '#{gene_name}' not found or API search format is invalid. (Status: #{gene_search_response.code rescue 'N/A'})"
           puts "  ERROR 1a: #{api_data_for_gene[:error_message]}"
-          temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] } # Simpan error ini
-          next # Lanjut ke gen berikutnya jika gen awal tidak ditemukan
+          temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
+          next
         end
         api_data_for_gene[:jax_gene_id] = first_gene_result['id']
-        puts "  1a. JAX Gene ID: #{api_data_for_gene[:jax_gene_id]}"
+        puts "  1a. JAX Gene ID: #{api_data_for_gene[:jax_gene_id]}" # Sudah Inggris
 
         # 1b & 1c. Get Gene Annotations & Find first OMIM ID
         gene_annotation_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(api_data_for_gene[:jax_gene_id])}"
-        puts "  1b. URL Gene Annotation: #{gene_annotation_url}"
+        puts "  1b. Gene Annotation URL: #{gene_annotation_url}" # Sudah Inggris
         gene_annotation_response = HTTParty.get(gene_annotation_url, timeout: 15)
 
         unless gene_annotation_response.success? && (parsed_gene_annotation = gene_annotation_response.parsed_response).is_a?(Hash) &&
-               parsed_gene_annotation['diseases'].is_a?(Array)
-          api_data_for_gene[:error_message] = "Format anotasi 'diseases' dari JAX Gene ID tidak sesuai untuk '#{api_data_for_gene[:jax_gene_id]}'. (Status: #{gene_annotation_response.code rescue 'N/A'})"
+              parsed_gene_annotation['diseases'].is_a?(Array)
+          api_data_for_gene[:error_message] = "'diseases' annotation format from JAX Gene ID is invalid for '#{api_data_for_gene[:jax_gene_id]}'. (Status: #{gene_annotation_response.code rescue 'N/A'})"
           puts "  ERROR 1b/1c: #{api_data_for_gene[:error_message]}"
           temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
           next
@@ -92,63 +248,61 @@ class CalculatorController < ApplicationController
         
         omim_disease_entry = parsed_gene_annotation['diseases'].find { |disease| disease.is_a?(Hash) && disease['id']&.start_with?("OMIM:") }
         unless omim_disease_entry && omim_disease_entry['id'].present?
-          api_data_for_gene[:error_message] = "OMIM ID tidak ditemukan dalam 'diseases' untuk anotasi gen '#{api_data_for_gene[:jax_gene_id]}'."
+          api_data_for_gene[:error_message] = "OMIM ID not found in 'diseases' for gene annotation '#{api_data_for_gene[:jax_gene_id]}'."
           puts "  ERROR 1c: #{api_data_for_gene[:error_message]}"
           temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
           next
         end
         api_data_for_gene[:selected_omim_id] = omim_disease_entry['id']
-        puts "  1c. OMIM ID dipilih: #{api_data_for_gene[:selected_omim_id]}"
+        puts "  1c. Selected OMIM ID: #{api_data_for_gene[:selected_omim_id]}"
 
         # 1d. Get OMIM Annotations
         omim_details_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(api_data_for_gene[:selected_omim_id])}"
-        puts "  1d. URL OMIM Annotation: #{omim_details_url}"
+        puts "  1d. OMIM Annotation URL: #{omim_details_url}" # Sudah Inggris
         omim_details_response = HTTParty.get(omim_details_url, timeout: 15)
 
         unless omim_details_response.success? && (parsed_omim_details = omim_details_response.parsed_response).is_a?(Hash)
-          api_data_for_gene[:error_message] = "Gagal mengambil detail untuk OMIM ID '#{api_data_for_gene[:selected_omim_id]}'. (Status: #{omim_details_response.code rescue 'N/A'})"
+          api_data_for_gene[:error_message] = "Failed to retrieve details for OMIM ID '#{api_data_for_gene[:selected_omim_id]}'. (Status: #{omim_details_response.code rescue 'N/A'})"
           puts "  ERROR 1d: #{api_data_for_gene[:error_message]}"
           temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
           next
         end
         
-        # Ambil Nama Penyakit Utama dari OMIM
         if parsed_omim_details['disease'].is_a?(Hash) && parsed_omim_details['disease']['name'].present?
           api_data_for_gene[:omim_main_disease_name] = parsed_omim_details['disease']['name']
-          puts "  1d. Penyakit Utama OMIM: #{api_data_for_gene[:omim_main_disease_name]}"
+          puts "  1d. OMIM Main Disease: #{api_data_for_gene[:omim_main_disease_name]}"
         else
-          puts "  1d. Tidak ada objek 'disease' utama atau nama penyakit di detail OMIM."
+          puts "  1d. No main 'disease' object or disease name in OMIM details."
         end
-      
-        # Ambil Info Pewarisan
+        
         if parsed_omim_details['categories'].is_a?(Hash) &&
-           parsed_omim_details['categories']['Inheritance'].is_a?(Array) &&
-           (first_inheritance_info = parsed_omim_details['categories']['Inheritance'].first).is_a?(Hash) &&
-           first_inheritance_info['name'].present?
+          parsed_omim_details['categories']['Inheritance'].is_a?(Array) &&
+          (first_inheritance_info = parsed_omim_details['categories']['Inheritance'].first).is_a?(Hash) &&
+          first_inheritance_info['name'].present?
           api_data_for_gene[:inheritance_type] = first_inheritance_info['name']
-          puts "  -> Info Pewarisan Ditemukan: #{api_data_for_gene[:inheritance_type]}"
+          puts "  -> Inheritance Info Found: #{api_data_for_gene[:inheritance_type]}"
         else
-          puts "  -> Tidak ada info 'Inheritance' valid ditemukan di kategori."
+          puts "  -> No valid 'Inheritance' info found in categories."
         end
 
-        # LANGKAH 1e: Lakukan pencocokan fenotip
+        # STEP 1e: Perform phenotype matching
         # ====================================
-        matched_this_gene_phenotypes = [] # Untuk fenotip yang cocok untuk gen saat ini
+        matched_this_gene_phenotypes = [] # For phenotypes matching this current gene
 
-        # 1. Cocokkan dengan nama penyakit utama OMIM
+        # 1. Match with OMIM main disease name
         if api_data_for_gene[:omim_main_disease_name].present?
           main_disease_name = api_data_for_gene[:omim_main_disease_name]
           if searched_phenotypes.any? { |user_pheno| main_disease_name.downcase.include?(user_pheno.downcase.strip) || user_pheno.downcase.strip.include?(main_disease_name.downcase) }
             matched_this_gene_phenotypes << {
-              name: main_disease_name, # Ambil dari api_data_for_gene atau parsed_omim_details['disease']
-              id: api_data_for_gene[:selected_omim_id], # Ini adalah OMIM ID nya
+              name: main_disease_name,
+              id: api_data_for_gene[:selected_omim_id],
               source: "OMIM Main Disease"
             }
-            puts "  1e. COCOK (Penyakit Utama): #{main_disease_name}"
+            puts "  1e. MATCH (Main Disease): #{main_disease_name}"
           end
         end
 
-        # 2. Cocokkan dengan semua fenotip di dalam 'categories'
+        # 2. Match with all phenotypes within 'categories'
         if parsed_omim_details['categories'].is_a?(Hash)
           parsed_omim_details['categories'].each do |_category_name, phenotypes_in_category|
             next unless phenotypes_in_category.is_a?(Array)
@@ -166,85 +320,83 @@ class CalculatorController < ApplicationController
                   category: pheno_detail['category'],
                   source: "OMIM Category Phenotype"
                 }
-                puts "  1e. COCOK (Kategori): #{pheno_name_from_category}"
+                puts "  1e. MATCH (Category): #{pheno_name_from_category}"
               end
             end
           end
         end
         
-        # HANYA TAMBAHKAN KE TEMP_RESULTS JIKA ADA FENOTIP YANG COCOK
-        if matched_this_gene_phenotypes.any?
-          flash_item_result = {
+        # ONLY ADD TO TEMP_RESULTS IF THERE ARE MATCHING PHENOTYPES
+        if matched_this_gene_phenotypes.any?          
+          # Assuming calculate_genotype expects 6 arguments: 
+          # (gene_name, disease_name, inheritance_type, matched_phenotypes_list, father_zygosity, mother_zygosity)
+          # If your calculate_genotype definition has changed to 5 arguments (excluding matched_phenotypes_list), 
+          # then remove `matched_this_gene_phenotypes` from the call below.
+          # def calculate_genotype(gene_name, diesease_name, inheritance_type, father_zygosity, mother_zygosity)
+          calculation_result = calculate_genotype(
+            api_data_for_gene[:gene_name],
+            api_data_for_gene[:omim_main_disease_name],
+            api_data_for_gene[:inheritance_type],
+            zygosities_p1[index],
+            zygosities_p2[index]
+          )
+          temp_results << {
             input_gene_name: api_data_for_gene[:gene_name],
-            associated_disease_name: api_data_for_gene[:omim_main_disease_name], # Tetap simpan penyakit utama
+            associated_disease_name: api_data_for_gene[:omim_main_disease_name],
             inheritance_type: api_data_for_gene[:inheritance_type],
-            matched_phenotypes_details: matched_this_gene_phenotypes, # Simpan semua yang cocok
-            error: nil # Tidak ada error jika sampai sini dan ada yang cocok
+            matched_phenotypes_details: matched_this_gene_phenotypes,
+            calculation_result: calculation_result,
+            error: nil # No error if it reached here and matched
           }
-          temp_results << flash_item_result
-          puts "  -> GEN '#{gene_name}' MEMILIKI FENOTIP COCOK, DITAMBAHKAN KE HASIL."
+          puts "  -> GENE '#{gene_name}' HAS MATCHING PHENOTYPES, ADDED TO RESULTS."
         else
-          # Tidak ada fenotip yang cocok untuk gen ini, jadi kita tidak menambahkannya ke temp_results
-          # kecuali jika Anda ingin menampilkan pesan "tidak ada yang cocok" secara eksplisit per gen.
-          # Untuk permintaan Anda, kita lewati.
-          puts "  -> GEN '#{gene_name}' TIDAK MEMILIKI FENOTIP COCOK, TIDAK DITAMBAHKAN KE HASIL."
-          # Jika Anda ingin tetap menampilkan gen yang diproses meskipun tidak ada fenotip cocok,
-          # Anda bisa membuat entri di temp_results dengan pesan khusus di sini.
-          # Contoh:
+          puts "  -> GENE '#{gene_name}' HAS NO MATCHING PHENOTYPES, NOT ADDED TO RESULTS."
+          # Optionally, add an entry to temp_results if you want to show genes that were processed but had no matches
           # temp_results << {
           #   input_gene_name: api_data_for_gene[:gene_name],
           #   associated_disease_name: api_data_for_gene[:omim_main_disease_name],
           #   inheritance_type: api_data_for_gene[:inheritance_type],
-          #   error: "Tidak ada fenotip yang cocok dengan input pengguna untuk gen ini."
+          #   error: "No phenotypes matched user input for this gene."
           # }
         end
 
       rescue HTTParty::Error, SocketError => e
-        # Jika terjadi error koneksi, tetap catat gen ini dengan errornya
-        temp_results << { input_gene_name: gene_name, error: "Masalah koneksi API: #{e.message}" }
+        temp_results << { input_gene_name: gene_name, error: "API connection issue: #{e.message}" }
       rescue StandardError => e
-        temp_results << { input_gene_name: gene_name, error: "Kesalahan tak terduga: #{e.message}" }
-        puts "STACKTRACE: #{e.backtrace.first(5).join("\n")}"
+        temp_results << { input_gene_name: gene_name, error: "Unexpected error: #{e.message}", backtrace: e.backtrace.first(5) }
+        puts "STACKTRACE: #{e.backtrace.join("\n")}" # Log full stacktrace on server
       end
     end
 
-    flash[:kalkulasi_results_data] = temp_results
+    session[:kalkulasi_results_data] = temp_results # Storing results in session
     
-    if !calculator_data.present? || submitted_genes.empty? && searched_phenotypes.empty?
-      # Ini seharusnya sudah ditangani di awal action dengan redirect, tapi sebagai fallback
-      flash[:alert] = "Tidak ada data input yang valid untuk diproses."
+    # Set flash messages based on processing outcome
+    if !calculator_data.present? || (submitted_genes.empty? && searched_phenotypes.empty?)
+      session[:alert] = "No valid input data to process."
     else
-      # Hitung jumlah gen yang berhasil diproses API (tidak ada error koneksi/API dasar)
-      # dan berapa banyak yang menghasilkan kecocokan fenotip.
-      
-      # genes_processed_without_api_error = 0 # Anda perlu melacak ini di dalam loop jika ingin detail
-      # Untuk saat ini, kita akan fokus pada isi temp_results
-
       successful_matches_count = temp_results.count { |r| r[:error].nil? && r[:matched_phenotypes_details].present? && r[:matched_phenotypes_details].any? }
       error_entries_count = temp_results.count { |r| r[:error].present? }
-      
       total_submitted_genes = submitted_genes.count
 
       if successful_matches_count > 0
-        flash[:notice] = "Ditemukan #{successful_matches_count} gen dengan fenotip yang cocok."
+        session[:notice] = "Found #{successful_matches_count} gene(s) with matching phenotypes."
         if error_entries_count > 0
-          # Ada beberapa yang sukses, beberapa error
-          flash[:alert] = "Namun, #{error_entries_count} gen lain mengalami masalah saat diproses atau tidak ditemukan."
+          session[:alert] = "However, #{error_entries_count} other gene(s) had issues during processing or were not found."
         end
       elsif error_entries_count == total_submitted_genes && total_submitted_genes > 0
-        # Semua yang di-submit menghasilkan error yang dicatat di temp_results
-        flash[:alert] = "Semua #{total_submitted_genes} gen yang dimasukkan mengalami masalah saat diproses."
+        session[:alert] = "All #{total_submitted_genes} submitted gene(s) encountered issues during processing."
       elsif error_entries_count > 0 && error_entries_count < total_submitted_genes
-        # Beberapa error, sisanya tidak menghasilkan match (karena tidak ada di temp_results)
-        flash[:alert] = "#{error_entries_count} gen mengalami masalah. Sisanya tidak menemukan fenotip yang cocok."
-      elsif total_submitted_genes > 0 && temp_results.empty?
-        # Tidak ada error API yang dicatat, dan tidak ada fenotip cocok, sehingga temp_results kosong
-        flash[:info] = "Tidak ditemukan fenotip yang cocok dengan fenotip Anda."
+        # This means some had errors, and the rest (that didn't error out early) didn't have matches.
+        session[:alert] = "#{error_entries_count} gene(s) had processing issues. The remaining processed genes did not find matching phenotypes."
+      elsif total_submitted_genes > 0 && temp_results.all? { |r| r[:error].present? || r[:matched_phenotypes_details].blank? || !r[:matched_phenotypes_details].any? }
+        # All processed genes either had an error or no matching phenotypes.
+        session[:info] = "No matching phenotypes were found for the processed genes, or all genes encountered errors."
+      elsif temp_results.empty? && total_submitted_genes > 0 # All genes failed very early (e.g. API down) or no genes had any matches
+          session[:info] = "No genes resulted in matching phenotypes, or processing could not be completed for any gene."
       elsif temp_results.empty? && total_submitted_genes == 0 && calculator_data.present?
-         flash[:alert] = "Tidak ada gen yang valid untuk diproses dari input Anda."
-      else
-        # Fallback jika ada hasil di temp_results tapi tidak masuk kondisi di atas (seharusnya jarang)
-        flash[:info] = "Pemrosesan selesai."
+        session[:alert] = "No valid genes were submitted for processing." # More specific
+      else # Fallback, should be rare if other conditions are comprehensive
+        session[:info] = "Processing complete. Check results."
       end
     end
     
