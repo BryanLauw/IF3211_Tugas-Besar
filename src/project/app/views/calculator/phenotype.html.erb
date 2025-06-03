@@ -1,5 +1,5 @@
 <main class="main top-main">
-    <h2>Perhitungan dengan Fenotip</h2>
+    <h2>Calculation with Phenotype</h2>
 
     <% if flash[:alert] %>
       <div class="flash-message alert" style="background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:alert] %></div>
@@ -9,84 +9,183 @@
     <% end %>
 
     <%= form_with(url: process_phenotype_calculator_path, method: :post, local: true, data: { turbo: false }, html: { class: "main-calculator-form" }) do |form| %>
-        <%# --- Input Fenotip --- %>
+        <%# --- Phenotype Input Section --- %>
         <div data-controller="dynamic-table" class="dynamic-section">
-            <h1>Masukkan fenotip yang ingin diketahui</h1>
+            <h1>Enter the phenotype you want to evaluate</h1>
             <table class="dynamic-form-table">
                 <thead>
                     <tr>
-                        <th>Nomor</th>
-                        <th>Fenotip</th>
-                        <th>Fenotip P1</th>
-                        <th>Fenotip P2</th>
-                        <th>Aksi</th>
+                        <th>No.</th>
+                        <th>Phenotype</th>
+                        <th>Mother's Phenotype</th>
+                        <th>Father's Phenotype</th>
+                        <th>Action</th>
                     </tr>   
                 </thead>
                 <tbody data-dynamic-table-target="container">
                     <tr data-dynamic-table-target="row">
                         <td>1</td>
-                        <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Tinggi" %></td>
+                        <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Example: Height" %></td>
                         <td>
-                            <%= select_tag "calculator[phenotypes_p1][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                            <%= select_tag "calculator[phenotypes_p1][]", options_for_select([["Present", "Present"], ["Absent", "Absent"]]), class: "table-select" %>
                         </td>
                         <td>
-                            <%= select_tag "calculator[phenotypes_p2][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                            <%= select_tag "calculator[phenotypes_p2][]", options_for_select([["Present", "Present"], ["Absent", "Absent"]]), class: "table-select" %>
                         </td>
                         <td></td>
                     </tr>
                 </tbody>
             </table>
             <div class="table-actions">
-                <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Fenotip</button>
+                <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Add Phenotype</button>
             </div>
             <template data-dynamic-table-target="template">
                 <tr data-dynamic-table-target="row">
                     <td></td>
-                    <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Tinggi" %></td>
+                    <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Example: Height" %></td>
                     <td>
-                        <%= select_tag "calculator[phenotypes_p1][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                        <%= select_tag "calculator[phenotypes_p1][]", options_for_select([["Present", "Present"], ["Absent", "Absent"]]), class: "table-select" %>
                     </td>
                     <td>
-                        <%= select_tag "calculator[phenotypes_p2][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                        <%= select_tag "calculator[phenotypes_p2][]", options_for_select([["Present", "Present"], ["Absent", "Absent"]]), class: "table-select" %>
                     </td>
                     <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
                 </tr>
             </template>
         </div>
 
-        <%# --- Tombol Submit Utama --- %>
+        <%# --- Main Submit Button --- %>
         <div class="table-actions">
-            <%= form.submit "Proses Data Fenotip", class: "button-add-row" %>
+            <%= form.submit "Process Phenotype Data", class: "button-add-row" %>
         </div>
-    <% end %> <%# Akhir dari form_with %>
+    <% end %>
 
-    <%# === BAGIAN UNTUK MENAMPILKAN HASIL === %>
     <% if defined?(@processed_results) && @processed_results.present? %>
-        <section class="results-section dynamic-section" id="hasil-analisis" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
-            <h1>Input user</h1>
+    <section class="results-section dynamic-section" id="user-input-results" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
+        <h1>User Input and API Data</h1>
+        <% @processed_results.each_with_index do |result, index| %>
+            <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
+                <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
+                    Input <%= index + 1 %>: <strong><%= result["phenotype"] || "N/A" %></strong>
+                    (<%= result["api_disease_name"] || "API name not found" %>)
+                </h3>
+                <p><strong>Mother's Phenotype:</strong> <%= result["input_parent1_phenotype"] %></p>
+                <p><strong>Father's Phenotype:</strong> <%= result["input_parent2_phenotype"] %></p>
 
-            <% @processed_results.each_with_index do |result, index| %>
-                <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
-                    <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
-                        Input ke-<%= index + 1 %>: <strong><%= result["phenotype"] || "N/A" %></strong>
-                        (<%= result["api_disease_name"] || "Nama API tidak ditemukan" %>)
-                    </h3>
-                    <p><strong>Fenotip P1:</strong> <%= result["p1"] %></p>
-                    <p><strong>Fenotip P2:</strong> <%= result["p2"] %></p>
+                <% if result["api_error"] %>
+                    <p style="color: red;"><strong>API Error:</strong> <%= result["api_error"] %></p>
+                <% else %>
+                    <p><strong>OMIM ID:</strong> <%= result["api_omim_id"] || "Not found" %></p>
+                    <p><strong>Inheritance Type from API:</strong> <%= result["api_inheritance_type"] || "Not found" %></p>
+                <% end %>
+            </div>
+        <% end %>
+    </section>
+    <% end %>
 
-                    <% if result["api_error"] %>
-                        <p style="color: red;"><strong>Error:</strong> <%= result["api_error"] %></p>
-                    <% else %>
-                        <p><strong>OMIM ID:</strong> <%= result["api_omim_id"] || "Tidak ditemukan" %></p>
-                        <p><strong>Tipe Pewarisan:</strong> <%= result["api_inheritance_type"] || "Tidak ditemukan" %></p>
+    <% if defined?(@single_disease_details_all) && @single_disease_details_all.present? %>
+    <section class="results-section dynamic-section" id="mendel-calculation-detail" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #aaa;">
+        <h1>Mendelian Calculation Details per Disease</h1>
+        <% @single_disease_details_all.each_with_index do |calc_detail, index| %>
+            <div class="calculation-detail-item" style="margin-bottom: 2rem; padding: 1.5rem; border: 1px solid #bbb; border-radius: 0.3rem; background-color: #f0f8ff;">
+                <h2 style="margin-top:0; font-size: 1.4rem; color: #1a237e;">
+                    Calculation for: <%= calc_detail[:phenotype_name] || "Unknown Disease" %>
+                </h2>
+
+                <% if calc_detail[:error] %>
+                    <p style="color: red; font-weight: bold;">Calculation Error: <%= calc_detail[:error] %></p>
+                <% else %>
+                    <p><strong>Used Inheritance Type:</strong> <%= calc_detail[:inheritance_type] %></p>
+                    <p><strong>Mother's Phenotype:</strong> <%= calc_detail[:parent1_phenotype_status] %></p>
+                    <p><strong>Father's Phenotype:</strong> <%= calc_detail[:parent2_phenotype_status] %></p>
+                    <hr style="margin: 1rem 0;">
+
+                    <h4>Possible Genotypes of Parents:</h4>
+                    <p><strong>Mother:</strong> <%= calc_detail[:possible_mother_genotypes]&.join(", ") || "None" %></p>
+                    <p><strong>Father:</strong> <%= calc_detail[:possible_father_genotypes]&.join(", ") || "None" %></p>
+                    <p><em>Total genotype pair scenarios: <%= calc_detail[:num_parent_genotype_scenarios] %></em></p>
+                    <hr style="margin: 1rem 0;">
+
+                    <h4>Details Per Genotype Scenario:</h4>
+                    <% calc_detail[:parent_genotype_scenarios_details]&.each_with_index do |scenario, s_idx| %>
+                        <div class="scenario-detail" style="margin-left: 20px; margin-bottom: 1rem; padding: 0.5rem; border: 1px dashed #ccc;">
+                            <strong>Scenario <%= s_idx + 1 %>: Mother (<%= scenario[:mother_genotype] %>) x Father (<%= scenario[:father_genotype] %>)</strong>
+                            <p style="margin-left:15px;">Child's Genotype Probabilities:</p>
+                            <ul style="margin-left:30px;">
+                                <% scenario[:offspring_genotype_probabilities]&.each do |geno, prob| %>
+                                    <li><%= geno %>: <%= (prob * 100).round(2) %>%</li>
+                                <% end %>
+                            </ul>
+                            <p style="margin-left:15px;">Child's Phenotype Probabilities (for this scenario):</p>
+                            <ul style="margin-left:30px;">
+                                <% scenario[:offspring_phenotype_probabilities]&.each do |pheno, prob| %>
+                                    <li><%= pheno %>: <%= (prob * 100).round(2) %>%</li>
+                                <% end %>
+                            </ul>
+                        </div>
                     <% end %>
-                </div>
-            <% end %>
-        </section>
-    <% elsif params[:action] == "process_genotype" && (!defined?(@processed_results) || @processed_results.blank?) %>
-        <section class="results-section dynamic-section" id="hasil-analisis-kosong" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
-            <h1>Input user</h1>
-            <p>Tidak ada hasil untuk ditampilkan atau tidak ada input yang valid. Pastikan input gen sudah benar atau coba lagi.</p>
-        </section>
+                    <hr style="margin: 1rem 0;">
+
+                    <h4>Final Child Probabilities (Average of all scenarios):</h4>
+                    <p><strong>Child's Genotype Probabilities:</strong></p>
+                    <ul style="margin-left:15px;">
+                        <% calc_detail[:final_average_offspring_genotype_probabilities]&.each do |geno, prob| %>
+                            <li><%= geno %>: <%= (prob * 100).round(2) %>%</li>
+                        <% end %>
+                    </ul>
+                    <p><strong>Child's Phenotype Probabilities:</strong></p>
+                    <ul style="margin-left:15px;">
+                        <% calc_detail[:final_average_offspring_phenotype_probabilities]&.each do |pheno, prob| %>
+                            <li><%= pheno %>: <%= (prob * 100).round(2) %>%</li>
+                        <% end %>
+                    </ul>
+                <% end %>
+            </div>
+        <% end %>
+    </section>
+    <% end %>
+
+    <% if defined?(@combined_probabilities_results) && @combined_probabilities_results.present? %>
+    <section class="results-section dynamic-section" id="combined-disease-result" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #888;">
+        <h1>Combined Disease Probability in Child</h1>
+        <p><em>Showing combinations for diseases that were successfully calculated.</em></p>
+        
+        <table class="results-table" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; text-align: left;">Phenotype Combination</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; text-align: right;">Probability</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% @combined_probabilities_results.each do |combo_result| %>
+                    <% if combo_result[:probability] > 0 %>
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;">
+                                <% if combo_result[:states].empty? %>
+                                    <span><em>(Baseline - no disease considered)</em></span>
+                                <% else %>
+                                    <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+                                        <% combo_result[:states].each do |disease_name, status| %>
+                                            <li><strong><%= disease_name %>:</strong> <%= status %></li>
+                                        <% end %>
+                                    </ul>
+                                <% end %>
+                            </td>
+                            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">
+                                <%= (combo_result[:probability] * 100).round(3) %>%
+                            </td>
+                        </tr>
+                    <% end %>
+                <% end %>
+            </tbody>
+        </table>
+        <% total_prob_check = @combined_probabilities_results.sum { |res| res[:probability] } %>
+        <p style="margin-top: 1rem; font-style: italic;">Total probability of all combinations: <%= (total_prob_check * 100).round(1) %>% (should be close to 100%)</p>
+    </section>
+    <% elsif @processed_results && @processed_results.length > 1 && (!defined?(@combined_probabilities_results) || @combined_probabilities_results.blank?) %>
+    <section class="results-section dynamic-section" id="combined-disease-info" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #888;">
+        <p><em>Combined disease calculation is performed if more than one disease is successfully processed.</em></p>
+    </section>
     <% end %>
 </main>

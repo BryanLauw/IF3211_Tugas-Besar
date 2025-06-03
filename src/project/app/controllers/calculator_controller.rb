@@ -380,7 +380,20 @@ class CalculatorController < ApplicationController
   end
 
   def phenotype
-    @processed_results = flash[:kalkulasi_results_data] || []
+    if flash[:kalkulasi_results_data]
+      @processed_results = flash[:kalkulasi_results_data]
+    end
+
+    if flash[:single_disease_calculation_details]
+      loaded_data = flash[:single_disease_calculation_details]
+      @single_disease_details_all = loaded_data.map { |item| item.deep_symbolize_keys }
+    end
+
+    if flash[:combined_disease_probabilities]
+      @combined_probabilities_results = flash[:combined_disease_probabilities]
+    end
+    
+    render 'phenotype'
   end
 
   def process_phenotype
@@ -390,7 +403,7 @@ class CalculatorController < ApplicationController
            calculator_params[:phenotypes].is_a?(Array) &&
            calculator_params[:phenotypes_p1].is_a?(Array) &&
            calculator_params[:phenotypes_p2].is_a?(Array)
-      flash[:alert] = "Data input tidak lengkap atau format salah. Mohon coba lagi."
+      flash[:alert] = "Input data is incomplete or incorrectly formatted. Please try again."
       redirect_to phenotype_calculator_path
       return
     end
@@ -410,15 +423,16 @@ class CalculatorController < ApplicationController
     end
 
     if user_inputs.empty?
-      flash[:alert] = "Tidak ada nama fenotip valid yang diinput. Mohon isi setidaknya satu baris fenotip dengan lengkap."
+      flash[:alert] = "No valid phenotype name was entered. Please fill in at least one phenotype row completely."
       redirect_to phenotype_calculator_path
       return
     end
 
-    processed_data_for_flash = []
+    processed_api_data_list = []
+    calculation_details_list = []
 
     user_inputs.each do |input_item|
-      current_result = {
+      current_api_result = {
         "phenotype" => input_item[:name],
         "p1" => input_item[:p1],
         "p2" => input_item[:p2],
@@ -428,7 +442,6 @@ class CalculatorController < ApplicationController
         "api_omim_id" => nil,
         "api_disease_name" => nil,
         "api_inheritance_type" => nil,
-        "api_gene_symbol" => nil,
         "api_error" => nil
       }
 
@@ -437,86 +450,137 @@ class CalculatorController < ApplicationController
         disease_search_response = HTTParty.get(disease_search_url, timeout: API_TIMEOUT)
 
         unless disease_search_response.success?
-          current_result["api_error"] = "Gagal menghubungi API pencarian penyakit (Status: #{disease_search_response.code})."
-          processed_data_for_flash << current_result
+          current_api_result["api_error"] = "Failed to contact disease search API (Status: #{disease_search_response.code})."
+          processed_api_data_list << current_api_result
           next
         end
-
         parsed_disease_search = disease_search_response.parsed_response
         unless parsed_disease_search.is_a?(Hash) && parsed_disease_search['results'].is_a?(Array)
-          current_result["api_error"] = "Format respons API pencarian penyakit tidak sesuai."
-          processed_data_for_flash << current_result
+          current_api_result["api_error"] = "Disease search API response format is not correct."
+          processed_api_data_list << current_api_result
           next
         end
-
         omim_entries = parsed_disease_search['results'].select do |r|
           r.is_a?(Hash) && r['id'].is_a?(String) && r['id'].start_with?("OMIM:")
         end
-
         selected_omim_entry = omim_entries.find do |r_omim|
           r_omim['name'].is_a?(String) && r_omim['name'].casecmp(input_item[:name]) == 0
         end
-
         selected_omim_entry ||= omim_entries.find { |r_omim| r_omim['name'].is_a?(String) }
         selected_omim_entry ||= omim_entries.first
-
         unless selected_omim_entry && selected_omim_entry['id'].is_a?(String)
-          current_result["api_error"] = "Tidak ditemukan OMIM ID valid untuk fenotip '#{input_item[:name]}'."
-          processed_data_for_flash << current_result
+          current_api_result["api_error"] = "No valid OMIM ID found for phenotype '#{input_item[:name]}'."
+          processed_api_data_list << current_api_result
           next
         end
-        
         omim_id_from_api = selected_omim_entry['id']
         name_from_api = selected_omim_entry['name']
-
-        current_result["api_omim_id"] = omim_id_from_api
-        current_result["api_disease_name"] = name_from_api.is_a?(String) ? name_from_api : nil
-
+        current_api_result["api_omim_id"] = omim_id_from_api
+        current_api_result["api_disease_name"] = name_from_api.is_a?(String) ? name_from_api : nil
 
         omim_annotation_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(omim_id_from_api)}"
         omim_annotation_response = HTTParty.get(omim_annotation_url, timeout: API_TIMEOUT)
-
         unless omim_annotation_response.success?
-          current_result["api_error"] = "Gagal mengambil anotasi untuk OMIM ID '#{omim_id_from_api}' (Status: #{omim_annotation_response.code})."
-          processed_data_for_flash << current_result
+          current_api_result["api_error"] = "Failed to fetch annotation for OMIM ID '#{omim_id_from_api}' (Status: #{omim_annotation_response.code})."
+          processed_api_data_list << current_api_result
           next
         end
-        
         parsed_omim_annotation = omim_annotation_response.parsed_response
         unless parsed_omim_annotation.is_a?(Hash)
-          current_result["api_error"] = "Format respons API anotasi OMIM tidak sesuai."
-          processed_data_for_flash << current_result
+          current_api_result["api_error"] = "OMIM annotation API response format is not correct."
+          processed_api_data_list << current_api_result
           next
         end
-
         inheritance_info = parsed_omim_annotation.dig('categories', 'Inheritance', 0, 'name')
         if inheritance_info.is_a?(String) && inheritance_info.present?
-          current_result["api_inheritance_type"] = inheritance_info
+          current_api_result["api_inheritance_type"] = inheritance_info
         else
-          current_result["api_error"] = [current_result["api_error"], "Info pewarisan tidak ditemukan atau format tidak sesuai."].compact.join(" ").strip
+          current_api_result["api_error"] = [current_api_result["api_error"], "Inheritance info not found or format is incorrect."].compact.join(" ").strip
         end
-
-        current_result["api_error"] = nil if current_result["api_error"].blank?
-
+        current_api_result["api_error"] = nil if current_api_result["api_error"].blank?
       rescue HTTParty::Error, SocketError, Timeout::Error => e
         Rails.logger.error "JAX API Network Error for phenotype '#{input_item&.[](:name) || 'unknown'}': #{e.class} - #{e.message}"
-        current_result["api_error"] = "Kesalahan jaringan atau timeout saat menghubungi JAX API: #{e.message}"
+        current_api_result["api_error"] = "Network error or timeout when calling JAX API: #{e.message}"
       rescue StandardError => e
-        log_message = "Unexpected error processing phenotype "
+        log_message = "Unexpected error during API fetch for phenotype "
         log_message += (input_item && input_item[:name]) ? "'#{input_item[:name]}'" : "[unknown phenotype input]"
         log_message += ": #{e.class} - #{e.message}"
         if e.backtrace.is_a?(Array)
           log_message += "\nBacktrace:\n#{e.backtrace.first(10).join("\n")}"
         end
         Rails.logger.error log_message
-        
-        current_result["api_error"] = "Terjadi kesalahan internal tidak terduga saat memproses fenotip. Silakan coba lagi."
+        current_api_result["api_error"] = "An unexpected internal error occurred while retrieving API data."
       ensure
-        processed_data_for_flash << current_result
+        processed_api_data_list << current_api_result
+      end
+
+      if current_api_result["api_error"].blank? && current_api_result["api_inheritance_type"].present?
+        p1_status = current_api_result["input_parent1_phenotype"] == "Present" ? "Positive" : "Negative"
+        p2_status = current_api_result["input_parent2_phenotype"] == "Present" ? "Positive" : "Negative"
+
+        calculation_input = {
+          "phenotype_name" => current_api_result["phenotype"],
+          "parent1_phenotype_status" => p1_status,
+          "parent2_phenotype_status" => p2_status,
+          "inheritance_type" => current_api_result["api_inheritance_type"]
+        }
+
+        begin
+          single_disease_result = MendelianCalculatorService.calculate_single_disease_probabilities(calculation_input)
+          puts "CONTROLLER DEBUG: single_disease_result FROM SERVICE = #{single_disease_result.inspect}"
+          calculation_details_list << single_disease_result
+        rescue StandardError => e
+            log_message = "Error during Mendelian calculation for phenotype "
+            log_message += (current_api_result && current_api_result["phenotype"]) ? "'#{current_api_result["phenotype"]}'" : "[unknown]"
+            log_message += ": #{e.class} - #{e.message}"
+            if e.backtrace.is_a?(Array)
+              log_message += "\nBacktrace:\n#{e.backtrace.first(10).join("\n")}"
+            end
+            Rails.logger.error log_message
+            calculation_details_list << {
+                phenotype_name: current_api_result["phenotype"],
+                error: "An internal error occurred while performing Mendelian calculations."
+            }
+        end
+      else
+        calculation_details_list << {
+            phenotype_name: current_api_result["phenotype"],
+            error: current_api_result["api_error"] || "Inheritance type not found, calculation cannot continue."
+        }
       end
     end
 
-    flash[:kalkulasi_results_data] = processed_data_for_flash
+    combined_phenotype_states = [{ states: {}, probability: 1.0 }]
+    successful_single_disease_calcs = calculation_details_list.select do |detail|
+      detail.is_a?(Hash) && detail[:error].nil? && detail[:final_average_offspring_phenotype_probabilities].present?
+    end
+
+    if successful_single_disease_calcs.length > 1
+      successful_single_disease_calcs.each do |disease_calc|
+        disease_name = disease_calc[:phenotype_name]
+        phenotype_probs_for_this_disease = disease_calc[:final_average_offspring_phenotype_probabilities]
+
+        prob_positive = phenotype_probs_for_this_disease["Positive"] || 0.0
+        prob_negative = phenotype_probs_for_this_disease["Negative"] || 0.0
+
+        next_combined_phenotype_states = []
+        combined_phenotype_states.each do |current_combined_state|
+          new_states_positive = current_combined_state[:states].merge({ disease_name => "Positive" })
+          new_prob_positive = current_combined_state[:probability] * prob_positive
+          next_combined_phenotype_states << { states: new_states_positive, probability: new_prob_positive }
+
+          new_states_negative = current_combined_state[:states].merge({ disease_name => "Negative" })
+          new_prob_negative = current_combined_state[:probability] * prob_negative
+          next_combined_phenotype_states << { states: new_states_negative, probability: new_prob_negative }
+        end
+        combined_phenotype_states = next_combined_phenotype_states
+      end
+      flash[:combined_disease_probabilities] = combined_phenotype_states
+    end
+
+    flash[:kalkulasi_results_data] = processed_api_data_list
+    flash[:single_disease_calculation_details] = calculation_details_list
+
     redirect_to phenotype_calculator_path
   end
 end

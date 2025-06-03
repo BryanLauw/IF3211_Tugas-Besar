@@ -1,0 +1,17 @@
+# config/database.yml
+default: &default
+  adapter: postgresql # Or mysql2
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  url: <%= ENV['DATABASE_URL'] %> # This will pick up from docker-compose environment
+
+test:
+  <<: *default
+  url: <%= ENV['DATABASE_URL_TEST'] %> # Or a separate DB config for test
+
+production:
+  <<: *default
+  url: <%= ENV['DATABASE_URL'] %> # Also for production
