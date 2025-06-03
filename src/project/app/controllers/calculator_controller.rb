@@ -253,22 +253,21 @@ class CalculatorController < ApplicationController
   end
 
   def phenotype
-  if flash[:kalkulasi_results_data]
-    @processed_results = flash[:kalkulasi_results_data]
-  end
-  if flash[:single_disease_calculation_details]
-     loaded_data = flash[:single_disease_calculation_details]
-     @single_disease_details_all = loaded_data.map { |item| item.deep_symbolize_keys }
+    if flash[:kalkulasi_results_data]
+      @processed_results = flash[:kalkulasi_results_data]
+    end
 
-     puts "PHENOTYPE ACTION DEBUG: @single_disease_details_all = #{@single_disease_details_all.inspect}"
-     if @single_disease_details_all.present? && @single_disease_details_all.first.is_a?(Hash)
-       puts "PHENOTYPE ACTION DEBUG: First item keys = #{@single_disease_details_all.first.keys.inspect}"
-       puts "PHENOTYPE ACTION DEBUG: First item phenotype_name = #{@single_disease_details_all.first[:phenotype_name].inspect}" # Access with symbol
-       puts "PHENOTYPE ACTION DEBUG: First item 'phenotype_name' = #{@single_disease_details_all.first['phenotype_name'].inspect}" # Access with string
-     end
+    if flash[:single_disease_calculation_details]
+      loaded_data = flash[:single_disease_calculation_details]
+      @single_disease_details_all = loaded_data.map { |item| item.deep_symbolize_keys }
+    end
+
+    if flash[:combined_disease_probabilities]
+      @combined_probabilities_results = flash[:combined_disease_probabilities]
+    end
+    
+    render 'phenotype'
   end
-  render 'phenotype'
-end
 
   def process_phenotype
     calculator_params = params[:calculator]
@@ -422,6 +421,34 @@ end
             error: current_api_result["api_error"] || "Tipe pewarisan tidak ditemukan, kalkulasi tidak dapat dilanjutkan."
         }
       end
+    end
+
+    combined_phenotype_states = [{ states: {}, probability: 1.0 }]
+    successful_single_disease_calcs = calculation_details_list.select do |detail|
+      detail.is_a?(Hash) && detail[:error].nil? && detail[:final_average_offspring_phenotype_probabilities].present?
+    end
+
+    if successful_single_disease_calcs.length > 1
+      successful_single_disease_calcs.each do |disease_calc|
+        disease_name = disease_calc[:phenotype_name]
+        phenotype_probs_for_this_disease = disease_calc[:final_average_offspring_phenotype_probabilities]
+
+        prob_positive = phenotype_probs_for_this_disease["Positive"] || 0.0
+        prob_negative = phenotype_probs_for_this_disease["Negative"] || 0.0
+
+        next_combined_phenotype_states = []
+        combined_phenotype_states.each do |current_combined_state|
+          new_states_positive = current_combined_state[:states].merge({ disease_name => "Positive" })
+          new_prob_positive = current_combined_state[:probability] * prob_positive
+          next_combined_phenotype_states << { states: new_states_positive, probability: new_prob_positive }
+
+          new_states_negative = current_combined_state[:states].merge({ disease_name => "Negative" })
+          new_prob_negative = current_combined_state[:probability] * prob_negative
+          next_combined_phenotype_states << { states: new_states_negative, probability: new_prob_negative }
+        end
+        combined_phenotype_states = next_combined_phenotype_states
+      end
+      flash[:combined_disease_probabilities] = combined_phenotype_states
     end
 
     flash[:kalkulasi_results_data] = processed_api_data_list

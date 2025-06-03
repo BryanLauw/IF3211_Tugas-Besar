@@ -144,4 +144,48 @@
         <% end %>
     </section>
     <% end %>
+
+    <% if defined?(@combined_probabilities_results) && @combined_probabilities_results.present? %>
+    <section class="results-section dynamic-section" id="hasil-kombinasi-penyakit" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #888;">
+        <h1>Probabilitas Kombinasi Penyakit pada Anak</h1>
+        <p><em>Menampilkan kombinasi untuk penyakit yang berhasil dihitung probabilitasnya.</em></p>
+        
+        <table class="results-table" style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; text-align: left;">Kombinasi Fenotip</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2; text-align: right;">Probabilitas</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% @combined_probabilities_results.each do |combo_result| %>
+                    <% if combo_result[:probability] > 0 %> <%# Only show combinations with non-zero probability %>
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;">
+                                <% if combo_result[:states].empty? %>
+                                    <span><em>(Basis awal - tidak ada penyakit dipertimbangkan)</em></span>
+                                <% else %>
+                                    <ul style="list-style-type: none; padding-left: 0; margin: 0;">
+                                        <% combo_result[:states].each do |disease_name, status| %>
+                                            <li><strong><%= disease_name %>:</strong> <%= status %></li>
+                                        <% end %>
+                                    </ul>
+                                <% end %>
+                            </td>
+                            <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">
+                                <%= (combo_result[:probability] * 100).round(3) %>%
+                            </td>
+                        </tr>
+                    <% end %>
+                <% end %>
+            </tbody>
+        </table>
+        <% total_prob_check = @combined_probabilities_results.sum { |res| res[:probability] } %>
+        <p style="margin-top: 1rem; font-style: italic;">Total probabilitas semua kombinasi: <%= (total_prob_check * 100).round(1) %>% (seharusnya mendekati 100%)</p>
+    </section>
+    <% elsif @processed_results && @processed_results.length > 1 && (!defined?(@combined_probabilities_results) || @combined_probabilities_results.blank?) %>
+    <section class="results-section dynamic-section" id="hasil-kombinasi-penyakit-info" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #888;">
+        <p><em>Kalkulasi kombinasi penyakit dilakukan jika lebih dari satu penyakit berhasil diproses.</em></p>
+    </section>
+    <% end %>
 </main>
