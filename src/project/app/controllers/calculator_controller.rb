@@ -108,7 +108,7 @@ class CalculatorController < ApplicationController
         retVal[:fault] = "Error: father must be Heterozygot or Homozygot Recessive in X-linked inheritance."
       else
         f = father_zygosity == "None" ? ["XA", "Y"] : get_alleles_X_linked(father_zygosity, true)
-        m = get_alleles_X_linked(mother_zygosity, false)
+        m = mother_zygosity == "None" ? ["XA", "XA"] : get_alleles_X_linked(mother_zygosity, false)
 
         combinations = f.product(m).map { |a1, a2| [a1, a2].join }
 
@@ -208,13 +208,11 @@ class CalculatorController < ApplicationController
       api_data_for_gene = {
         gene_name: gene_name,
         jax_gene_id: nil,
-        selected_omim_id: nil,
-        omim_main_disease_name: nil,
-        inheritance_type: nil,
-        all_related_omim_phenotypes: [], 
+        # selected_omim_id, omim_main_disease_name, inheritance_type tidak lagi di level ini
+        # karena bisa ada multiple matches
         error_message: nil
       }
-      puts "PROCESSING GENE: #{gene_name}" # Sudah Inggris
+      puts "PROCESSING GENE: #{gene_name}"
 
       begin
         # 1a. Search Gene
@@ -233,131 +231,108 @@ class CalculatorController < ApplicationController
         api_data_for_gene[:jax_gene_id] = first_gene_result['id']
         puts "  1a. JAX Gene ID: #{api_data_for_gene[:jax_gene_id]}" # Sudah Inggris
 
-        # 1b & 1c. Get Gene Annotations & Find first OMIM ID
+        # 1b. Get Gene Annotations
         gene_annotation_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(api_data_for_gene[:jax_gene_id])}"
-        puts "  1b. Gene Annotation URL: #{gene_annotation_url}" # Sudah Inggris
+        puts "  1b. Gene Annotation URL: #{gene_annotation_url}"
         gene_annotation_response = HTTParty.get(gene_annotation_url, timeout: 15)
 
         unless gene_annotation_response.success? && (parsed_gene_annotation = gene_annotation_response.parsed_response).is_a?(Hash) &&
-              parsed_gene_annotation['diseases'].is_a?(Array)
+               parsed_gene_annotation['diseases'].is_a?(Array)
           api_data_for_gene[:error_message] = "'diseases' annotation format from JAX Gene ID is invalid for '#{api_data_for_gene[:jax_gene_id]}'. (Status: #{gene_annotation_response.code rescue 'N/A'})"
-          puts "  ERROR 1b/1c: #{api_data_for_gene[:error_message]}"
+          puts "  ERROR 1b: #{api_data_for_gene[:error_message]}"
           temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
           next
         end
-        
-        omim_disease_entry = parsed_gene_annotation['diseases'].find { |disease| disease.is_a?(Hash) && disease['id']&.start_with?("OMIM:") }
-        unless omim_disease_entry && omim_disease_entry['id'].present?
-          api_data_for_gene[:error_message] = "OMIM ID not found in 'diseases' for gene annotation '#{api_data_for_gene[:jax_gene_id]}'."
-          puts "  ERROR 1c: #{api_data_for_gene[:error_message]}"
-          temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
-          next
-        end
-        api_data_for_gene[:selected_omim_id] = omim_disease_entry['id']
-        puts "  1c. Selected OMIM ID: #{api_data_for_gene[:selected_omim_id]}"
 
-        # 1d. Get OMIM Annotations
-        omim_details_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(api_data_for_gene[:selected_omim_id])}"
-        puts "  1d. OMIM Annotation URL: #{omim_details_url}" # Sudah Inggris
-        omim_details_response = HTTParty.get(omim_details_url, timeout: 15)
+        # Flag untuk melacak apakah setidaknya satu kecocokan OMIM diproses untuk gen ini
+        any_omim_match_processed_for_this_gene = false
 
-        unless omim_details_response.success? && (parsed_omim_details = omim_details_response.parsed_response).is_a?(Hash)
-          api_data_for_gene[:error_message] = "Failed to retrieve details for OMIM ID '#{api_data_for_gene[:selected_omim_id]}'. (Status: #{omim_details_response.code rescue 'N/A'})"
-          puts "  ERROR 1d: #{api_data_for_gene[:error_message]}"
-          temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
-          next
-        end
-        
-        if parsed_omim_details['disease'].is_a?(Hash) && parsed_omim_details['disease']['name'].present?
-          api_data_for_gene[:omim_main_disease_name] = parsed_omim_details['disease']['name']
-          puts "  1d. OMIM Main Disease: #{api_data_for_gene[:omim_main_disease_name]}"
-        else
-          puts "  1d. No main 'disease' object or disease name in OMIM details."
-        end
-        
-        if parsed_omim_details['categories'].is_a?(Hash) &&
-          parsed_omim_details['categories']['Inheritance'].is_a?(Array) &&
-          (first_inheritance_info = parsed_omim_details['categories']['Inheritance'].first).is_a?(Hash) &&
-          first_inheritance_info['name'].present?
-          api_data_for_gene[:inheritance_type] = first_inheritance_info['name']
-          puts "  -> Inheritance Info Found: #{api_data_for_gene[:inheritance_type]}"
-        else
-          puts "  -> No valid 'Inheritance' info found in categories."
-        end
+        # Iterasi melalui SEMUA 'diseases' dari anotasi gen
+        parsed_gene_annotation['diseases'].each do |disease_data_from_gene_annotation|
+          next unless disease_data_from_gene_annotation.is_a?(Hash) &&
+                      disease_data_from_gene_annotation['id']&.start_with?("OMIM:") &&
+                      disease_data_from_gene_annotation['name'].present?
 
-        # STEP 1e: Perform phenotype matching
-        # ====================================
-        matched_this_gene_phenotypes = [] # For phenotypes matching this current gene
+          current_omim_id_from_list = disease_data_from_gene_annotation['id']
+          current_omim_name_from_list = disease_data_from_gene_annotation['name']
 
-        # 1. Match with OMIM main disease name
-        if api_data_for_gene[:omim_main_disease_name].present?
-          main_disease_name = api_data_for_gene[:omim_main_disease_name]
-          if searched_phenotypes.any? { |user_pheno| main_disease_name.downcase.include?(user_pheno.downcase.strip) || user_pheno.downcase.strip.include?(main_disease_name.downcase) }
-            matched_this_gene_phenotypes << {
-              name: main_disease_name,
-              id: api_data_for_gene[:selected_omim_id],
-              source: "OMIM Main Disease"
-            }
-            puts "  1e. MATCH (Main Disease): #{main_disease_name}"
+          # Lakukan pencocokan dengan setiap fenotipe yang dicari pengguna
+          is_phenotype_match = searched_phenotypes.any? do |user_pheno|
+            user_pheno_clean = user_pheno.downcase.strip
+            current_omim_name_clean = current_omim_name_from_list.downcase
+            current_omim_name_clean.include?(user_pheno_clean) || user_pheno_clean.include?(current_omim_name_clean)
           end
-        end
 
-        # 2. Match with all phenotypes within 'categories'
-        if parsed_omim_details['categories'].is_a?(Hash)
-          parsed_omim_details['categories'].each do |_category_name, phenotypes_in_category|
-            next unless phenotypes_in_category.is_a?(Array)
-            phenotypes_in_category.each do |pheno_detail|
-              next unless pheno_detail.is_a?(Hash)
-              pheno_name_from_category = pheno_detail['name']
-              next if pheno_name_from_category.blank?
+          if is_phenotype_match
+            puts "  MATCH FOUND: Gene '#{gene_name}' linked to OMIM Disease '#{current_omim_name_from_list}' (ID: #{current_omim_id_from_list}) which matches user search."
+            
+            inheritance_type_for_this_match = nil # Default
 
-              is_already_matched = matched_this_gene_phenotypes.any? { |m| m[:id] == pheno_detail['id'] && m[:name] == pheno_name_from_category }
+            # Dapatkan detail OMIM (termasuk tipe pewarisan) untuk ID OMIM yang cocok ini
+            omim_details_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(current_omim_id_from_list)}"
+            puts "    Fetching details for matched OMIM ID: #{omim_details_url}"
+            omim_details_response = HTTParty.get(omim_details_url, timeout: 15)
 
-              if !is_already_matched && searched_phenotypes.any? { |user_pheno| pheno_name_from_category.downcase.include?(user_pheno.downcase.strip) || user_pheno.downcase.strip.include?(pheno_name_from_category.downcase) }
-                matched_this_gene_phenotypes << {
-                  id: pheno_detail['id'],
-                  name: pheno_name_from_category,
-                  category: pheno_detail['category'],
-                  source: "OMIM Category Phenotype"
-                }
-                puts "  1e. MATCH (Category): #{pheno_name_from_category}"
+            if omim_details_response.success? && (parsed_omim_details_for_match = omim_details_response.parsed_response).is_a?(Hash)
+              if parsed_omim_details_for_match['categories'].is_a?(Hash) &&
+                 parsed_omim_details_for_match['categories']['Inheritance'].is_a?(Array) &&
+                 (first_inheritance_info = parsed_omim_details_for_match['categories']['Inheritance'].first).is_a?(Hash) &&
+                 first_inheritance_info['name'].present?
+                inheritance_type_for_this_match = first_inheritance_info['name']
+                puts "    -> Inheritance Info for '#{current_omim_name_from_list}': #{inheritance_type_for_this_match}"
+              else
+                puts "    -> No valid 'Inheritance' info found for OMIM ID '#{current_omim_id_from_list}'."
               end
+            else
+              puts "    ERROR: Failed to retrieve details for matched OMIM ID '#{current_omim_id_from_list}'. (Status: #{omim_details_response.code rescue 'N/A'})"
+              # Anda bisa memutuskan apakah kegagalan mengambil detail ini harus menghentikan penambahan ke hasil
+              # atau tetap menambahkannya dengan inheritance_type = nil
             end
-          end
-        end
-        
-        # ONLY ADD TO TEMP_RESULTS IF THERE ARE MATCHING PHENOTYPES
-        if matched_this_gene_phenotypes.any?          
-          # Assuming calculate_genotype expects 6 arguments: 
-          # (gene_name, disease_name, inheritance_type, matched_phenotypes_list, father_zygosity, mother_zygosity)
-          # If your calculate_genotype definition has changed to 5 arguments (excluding matched_phenotypes_list), 
-          # then remove `matched_this_gene_phenotypes` from the call below.
-          # def calculate_genotype(gene_name, diesease_name, inheritance_type, father_zygosity, mother_zygosity)
-          calculation_result = calculate_genotype(
-            api_data_for_gene[:gene_name],
-            api_data_for_gene[:omim_main_disease_name],
-            api_data_for_gene[:inheritance_type],
-            zygosities_p1[index],
-            zygosities_p2[index]
-          )
+            
+            # Jika detail (meskipun inheritance_type bisa nil) berhasil diproses sampai tahap ini, set flag
+            any_omim_match_processed_for_this_gene = true
+
+            # Persiapkan detail fenotip yang cocok untuk fungsi calculate_genotype dan untuk disimpan
+            matched_phenotype_detail_for_this_iteration = [{
+              name: current_omim_name_from_list,
+              id: current_omim_id_from_list,
+              source: "OMIM Match from Gene Annotation" # Sumber lebih spesifik
+            }]
+
+            # Panggil fungsi calculate_genotype untuk SETIAP kecocokan OMIM
+            # Definisi fungsi calculate_genotype Anda:
+            # def calculate_genotype(gene_name, diesease_name, inheritance_type, father_zygosity, mother_zygosity)
+            calculation_result = calculate_genotype(
+              gene_name,
+              current_omim_name_from_list,
+              inheritance_type_for_this_match, # Bisa nil
+              zygosities_p1[index],
+              zygosities_p2[index]
+            )
+
+            temp_results << {
+              input_gene_name: gene_name,
+              associated_disease_name: current_omim_name_from_list,
+              inheritance_type: inheritance_type_for_this_match,
+              matched_phenotypes_details: matched_phenotype_detail_for_this_iteration, # Ini adalah detail untuk kecocokan spesifik ini
+              calculation_result: calculation_result,
+              error: nil # Error API gen sudah ditangani. Error detail OMIM bisa dicatat di log atau ditambahkan ke calculation_result jika perlu.
+            }
+            puts "  -> GENE '#{gene_name}' - Processed OMIM match: '#{current_omim_name_from_list}'."
+            # TIDAK ADA 'break' di sini, jadi loop akan berlanjut ke disease_data berikutnya
+          end # akhir dari if is_phenotype_match
+        end # akhir dari iterasi parsed_gene_annotation['diseases']
+
+        # Setelah loop 'diseases' selesai:
+        # Jika tidak ada kecocokan OMIM sama sekali yang diproses untuk gen ini,
+        # DAN tidak ada error API sebelumnya untuk gen ini (misalnya, gen tidak ditemukan).
+        if !any_omim_match_processed_for_this_gene && api_data_for_gene[:error_message].nil?
+          puts "  -> GENE '#{gene_name}' (JAX ID: #{api_data_for_gene[:jax_gene_id]}) - No OMIM diseases listed for this gene matched the user's searched phenotypes."
           temp_results << {
-            input_gene_name: api_data_for_gene[:gene_name],
-            associated_disease_name: api_data_for_gene[:omim_main_disease_name],
-            inheritance_type: api_data_for_gene[:inheritance_type],
-            matched_phenotypes_details: matched_this_gene_phenotypes,
-            calculation_result: calculation_result,
-            error: nil # No error if it reached here and matched
+            input_gene_name: gene_name,
+            error: "No OMIM diseases linked to this gene matched your searched phenotypes."
+            # Anda bisa tambahkan field lain seperti jax_gene_id atau associated_disease_name: "N/A" jika mau ditampilkan di UI
           }
-          puts "  -> GENE '#{gene_name}' HAS MATCHING PHENOTYPES, ADDED TO RESULTS."
-        else
-          puts "  -> GENE '#{gene_name}' HAS NO MATCHING PHENOTYPES, NOT ADDED TO RESULTS."
-          # Optionally, add an entry to temp_results if you want to show genes that were processed but had no matches
-          # temp_results << {
-          #   input_gene_name: api_data_for_gene[:gene_name],
-          #   associated_disease_name: api_data_for_gene[:omim_main_disease_name],
-          #   inheritance_type: api_data_for_gene[:inheritance_type],
-          #   error: "No phenotypes matched user input for this gene."
-          # }
         end
 
       rescue HTTParty::Error, SocketError => e
