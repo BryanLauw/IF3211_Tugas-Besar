@@ -7,7 +7,4 @@ class HomeController < ApplicationController
   
   def howtouse
   end
-  
-  def about
-  end
 end
