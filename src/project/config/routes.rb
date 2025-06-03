@@ -3,7 +3,6 @@ Rails.application.routes.draw do
   get "/home", to: "home#index"
   get "/howtouse", to: "home#howtouse"
   get "/concept", to: "home#concept"
-  get "/about", to: "home#about"
   
   get "calculator/genotype"
   get "/genotype", to: "calculator#genotype", as: :genotype_calculator
