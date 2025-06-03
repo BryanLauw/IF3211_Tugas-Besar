@@ -1,3 +1,47 @@
-<div class="about-main">
-    <h1>Panduan Penggunaan</h1>
-</div>
+<main class="main top-main">
+  <div class="top-message">
+    <h2>How to Use</h2>
+  </div>
+
+  <%# Bagian Instruksi Genotype Input %>
+  <div class="how-to-use-section">
+    <h1>Genotype Input Steps</h1> <%# Judul lebih deskriptif %>
+    <ul>
+      <li>
+        <p>1. Pick "Genotype from DNA Test" in the main menu.</p>
+        <%= image_tag "pick_gene.svg", alt: "Step 1 - Pick Genotype from DNA Test" %>
+      </li>
+      <li>
+        <p>2. Fill the Gene and the Phenotype input fields.</p>
+        <%= image_tag "fill_gen_phen.svg", alt: "Step 2 - Fill Gene and Phenotype" %>
+      </li>
+      <li>
+        <p>3. Select zygosity for both parents from the dropdown menus.</p>
+        <%= image_tag "zygosity.svg", alt: "Step 3 - Select Zygosity" %>
+      </li>
+      <li>
+        <p>4. Add more genotype or phenotype rows by clicking the respective '+ Add' button as needed.</p>
+        <%= image_tag "add_row.svg", alt: "Step 4 - Add Rows" %>
+      </li>
+      <li>
+        <p>5. Delete any excess rows by clicking the ✕ button next to the row.</p>
+        <%= image_tag "delete_row.svg", alt: "Step 5 - Delete Rows" %>
+      </li>
+      <li>
+        <p>6. Click the "Process the Data" button to start the analysis.</p>
+        <%= image_tag "start.svg", alt: "Step 6 - Process Data" %>
+      </li>
+      <li>
+        <p>7. The calculation result will be shown below the form after processing.</p>
+        <%= image_tag "result.svg", alt: "Step 7 - View Result" %>
+      </li>
+    </ul>
+  </div>
+
+  <%# Bagian Instruksi Phenotype Input (jika ada dan mengikuti format serupa) %>
+  <div class="how-to-use-section">
+    <h1>Phenotype Input Steps</h1> <%# Contoh judul, sesuaikan jika perlu %>
+    <%# Jika bagian ini memiliki instruksi, tambahkan <ul> dan <li> serupa di sini %>
+    <p style="text-align: center; padding: 2rem; color: #777;">(Instructions for Phenotype Input can be added here following a similar list format if needed)</p>
+  </div>
+</main>

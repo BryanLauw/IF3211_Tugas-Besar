@@ -480,3 +480,364 @@ header {
     opacity: 0.5;
     color: #555555;
 }
+
+Oke, saya akan bantu perbaiki tampilan halaman "How to Use" Anda agar terlihat lebih baik dan gambar-gambarnya lebih kecil.
+
+Berikut adalah langkah-langkahnya:
+
+Modifikasi ERB: Kita akan menghapus <li> yang kosong dan menambahkan kelas CSS pada div pembungkus utama untuk setiap bagian instruksi.
+Tambahkan CSS Baru: Kita akan menambahkan aturan CSS baru untuk menata bagian instruksi ini.
+1. Modifikasi Kode ERB Anda
+Hapus semua <li></li> yang kosong. Lalu, tambahkan kelas how-to-use-section (atau nama lain yang Anda suka) pada div yang membungkus setiap set instruksi (misalnya, "Genotype Input").
+
+Cuplikan kode
+
+<main class="main top-main">
+  <div class="top-message">
+    <h2>How to Use</h2>
+  </div>
+
+  <%# Bagian Instruksi Genotype Input %>
+  <div class="how-to-use-section">
+    <h1>Genotype Input Steps</h1> <%# Judul lebih deskriptif %>
+    <ul>
+      <li>
+        <p>1. Pick "Genotype from DNA Test" in the main menu.</p>
+        <%= image_tag "pick_gene.svg", alt: "Step 1 - Pick Genotype from DNA Test" %>
+      </li>
+      <li>
+        <p>2. Fill the Gene and the Phenotype input fields.</p>
+        <%= image_tag "fill_gen_phen.svg", alt: "Step 2 - Fill Gene and Phenotype" %>
+      </li>
+      <li>
+        <p>3. Select zygosity for both parents from the dropdown menus.</p>
+        <%= image_tag "zygosity.svg", alt: "Step 3 - Select Zygosity" %>
+      </li>
+      <li>
+        <p>4. Add more genotype or phenotype rows by clicking the respective '+ Add' button as needed.</p>
+        <%= image_tag "add_row.svg", alt: "Step 4 - Add Rows" %>
+      </li>
+      <li>
+        <p>5. Delete any excess rows by clicking the ✕ button next to the row.</p>
+        <%= image_tag "delete_row.svg", alt: "Step 5 - Delete Rows" %>
+      </li>
+      <li>
+        <p>6. Click the "Process the Data" button to start the analysis.</p>
+        <%= image_tag "start.svg", alt: "Step 6 - Process Data" %>
+      </li>
+      <li>
+        <p>7. The calculation result will be shown below the form after processing.</p>
+        <%= image_tag "result.svg", alt: "Step 7 - View Result" %>
+      </li>
+    </ul>
+  </div>
+
+  <%# Bagian Instruksi Phenotype Input (jika ada dan mengikuti format serupa) %>
+  <div class="how-to-use-section">
+    <h1>Phenotype Input Steps</h1> <%# Contoh judul, sesuaikan jika perlu %>
+    <%# Jika bagian ini memiliki instruksi, tambahkan <ul> dan <li> serupa di sini %>
+    <p style="text-align: center; padding: 2rem; color: #777;">(Instructions for Phenotype Input can be added here following a similar list format if needed)</p>
+  </div>
+</main>
+Perubahan pada ERB:
+
+Semua <li></li> yang kosong telah dihapus. Spasi antar langkah akan diatur oleh CSS.
+div yang membungkus instruksi "Genotype Input" diberi kelas how-to-use-section.
+Judul <h1> diubah agar lebih deskriptif.
+Teks alt pada gambar sedikit diperjelas.
+Placeholder ditambahkan untuk instruksi "Phenotype Input" jika Anda ingin menambahkannya nanti dengan format serupa.
+2. Tambahkan Aturan CSS Berikut ke File CSS Anda
+Anda bisa menambahkan ini di akhir file CSS Anda atau di bagian baru yang relevan.
+
+CSS
+
+/* Reset ================================ */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    font: 100%/1.5 'Avenir Next', 'Hiragino Sans', sans-serif;
+    line-height: 1.7;
+    letter-spacing: 0.0625rem;
+}
+
+/* Modifikasi Reset untuk List agar <ol> bisa menampilkan nomor */
+ul {
+  list-style-type: none; /* Hapus bullets dari <ul> */
+  padding-left: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+ol {
+  list-style-type: decimal; /* Pastikan <ol> punya nomor */
+  padding-left: 2.5rem; /* Sekitar 40px, untuk ruang nomor */
+  margin-top: 0;
+  margin-bottom: 0;
+}
+/* Reset umum untuk margin/padding <li> jika masih diperlukan */
+li {
+  /* Anda bisa biarkan kosong jika margin/padding lebih baik dihandle oleh ul/ol atau class spesifik */
+  /* Jika ingin reset: */
+  /* margin: 0; */
+  /* padding: 0; */
+}
+
+
+a {
+    text-decoration: none;
+    color: #000000;
+    font-size: 0.875rem;
+}
+
+h1, h2, h3, h4, h5, h6, p {
+    margin: 0;
+}
+
+input {
+    background-color: transparent;
+    outline-width: 0;
+}
+
+form input[type="submit"] {
+    border: none;
+    cursor: pointer;
+}
+
+/* Common Layout ================================ */
+body {
+    color: #000000;
+    background-color: #ffffff;
+    margin: 0;
+    min-height: 100vh; /* Diubah ke 100vh agar body minimal setinggi viewport */
+}
+
+.main {
+    position: relative;
+    padding-top: 4rem;
+    width: 100%;
+    min-height: calc(100vh - 4rem);
+    background-color: #ffffff;
+}
+
+.container {
+    max-width: 37.5rem;
+    margin: 3.75rem auto;
+    padding-left: 0.9375rem;
+    padding-right: 0.9375rem;
+    clear: both;
+}
+
+/* Header (Navbar) ================================ */
+header {
+    height: 4rem;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    width: 100%;
+    background-color: #3ecdc6;
+}
+
+.header-logo {
+    float: left;
+    padding-left: 1.25rem;
+    color: #000000;
+    font-size: 1.375rem;
+    line-height: 4rem;
+}
+
+.header-logo a {
+    color: #000000;
+    font-size: 1.375rem;
+}
+
+.header-menus {
+    float: right;
+    padding-right: 1.25rem;
+}
+
+.header-menus li {
+    float: left;
+    line-height: 4rem;
+    font-size: 0.8125rem;
+    color: #000000;
+    padding-left: 0.9375rem;
+}
+
+.header-menus a {
+    float: left;
+    font-size: 0.8125rem;
+    color: #000000;
+}
+
+.header-menus .fa {
+    padding-right: 0.3125rem;
+    color: #000000;
+}
+
+.header-menus input[type="submit"] {
+    padding: 0 1.25rem;
+    float: left;
+    line-height: 4rem;
+    color: #000000;
+    margin: 0;
+    font-size: 0.8125rem;
+    background-color: transparent;
+}
+
+/* Top ================================ */
+.top-main {
+    /* margin-top: 1.25rem; Dihapus jika tidak ada konten lain di atasnya selain header */
+    /* text-align: center; Dihapus agar konten di dalamnya bisa diatur per bagian */
+    width: 100%;
+    color: #000000;
+    background-color: #ffffff;
+    padding-bottom: 3rem; /* Tambahkan padding bawah untuk .main */
+}
+
+.top-message { /* Untuk judul utama halaman seperti "How to Use" */
+    text-align: center; /* Judul utama halaman tetap di tengah */
+    margin-top: 2rem;  /* Spasi dari atas setelah padding-top .main */
+    margin-bottom: 2.5rem; /* Spasi ke konten di bawahnya */
+}
+
+.top-message h2 { /* Styling untuk judul seperti "How to Use" */
+    font-size: 2.5rem; /* Ukuran font judul */
+    font-weight: 600;
+    color: #2c3e50; /* Warna lebih gelap */
+    line-height: 1.3;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* About (Jika ada, biarkan styling yang sudah ada) ================================ */
+.about-main {
+    margin-top: 5rem;
+    margin-left: 8%;
+    margin-right: 8%;
+    margin-bottom: 3.75rem;
+    color: #000000;
+}
+/* ... (sisa styling .about-main) ... */
+
+
+/* Option (Jika ada, biarkan styling yang sudah ada) ================================ */
+.option {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;            
+    width: 90%;            
+    max-width: 25rem;      
+    margin-top: 2rem;      
+    margin-left: auto;     
+    margin-right: auto;    
+}
+/* ... (sisa styling .option) ... */
+
+
+/* Form (Styling tabel form Anda) ================================ */
+/* ... (biarkan styling .dynamic-form-table dan terkaitnya seperti sebelumnya) ... */
+.dynamic-form-table {
+    width: 90%; /* Dibuat lebih responsif */
+    max-width: 50rem; /* Maksimum lebar bisa disesuaikan */
+    margin: 2rem auto;
+    border-collapse: collapse;
+    box-shadow: 0 0.125rem 0.375rem rgba(0,0,0,0.1);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+/* ... (sisa styling .dynamic-form-table) ... */
+
+
+/* Flash Messages (Styling flash messages Anda) ================================ */
+/* Anda sudah punya styling inline di ERB, ini contoh jika ingin memindahkannya ke CSS */
+.flash-message {
+    padding: 1rem;
+    margin-left: auto;  /* Menengahkan flash message */
+    margin-right: auto; /* Menengahkan flash message */
+    margin-bottom: 1.5rem;
+    border-radius: 0.25rem;
+    width: 90%; /* Lebar flash message */
+    max-width: 45rem; /* Maksimum lebar flash message */
+    text-align: center;
+}
+.flash-message.alert {
+    background-color: #fff5f5;
+    border: 1px solid #e53e3e;
+    color: #c53030;
+}
+.flash-message.info {
+    background-color: #e6f7ff;
+    border: 1px solid #91d5ff;
+    color: #0050b3;
+}
+.flash-message.notice {
+    background-color: #e6fffa;
+    border: 1px solid #87e8de;
+    color: #006d75;
+}
+/* Hapus class .flash lama jika Anda menggunakan .flash-message ini */
+
+
+/* Results Section (Styling hasil kalkulasi Anda) ================================ */
+/* ... (biarkan styling .results-section dan terkaitnya seperti sebelumnya) ... */
+.results-section {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+  width: 90%; /* Dibuat lebih responsif */
+  max-width: 50rem; /* Maksimum lebar bisa disesuaikan */
+  margin-left: auto;
+  margin-right: auto;
+}
+/* ... (sisa styling .results-section) ... */
+
+/* How to Use Page / Instructions Styling (BARU) ================================ */
+.how-to-use-section {
+  max-width: 50rem; /* Lebar maksimum konten instruksi (misal 800px) */
+  margin: 2.5rem auto; /* Spasi atas/bawah dan tengahkan */
+  padding: 0 1rem; /* Padding kiri/kanan jika lebar viewport kecil */
+  text-align: left; /* Konten di dalam setiap langkah rata kiri */
+}
+
+.how-to-use-section h1 {
+  font-size: 1.75rem; /* Ukuran judul bagian (misal "Genotype Input Steps") */
+  color: #34495e; /* Warna lebih lembut dari H2 utama */
+  margin-bottom: 2rem; /* Spasi ke daftar langkah */
+  text-align: center; /* Judul bagian ini tetap di tengah */
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.how-to-use-section ul {
+  /* Default <ul> sudah direset (list-style-type: none; padding: 0; margin: 0;) */
+}
+
+.how-to-use-section li {
+  background-color: #ffffff; /* Latar belakang terang untuk setiap langkah */
+  border: 1px solid #e9ecef; /* Border halus */
+  border-radius: 0.375rem; /* Sudut sedikit membulat (6px) */
+  padding: 1.25rem; /* Padding di dalam setiap langkah (20px) */
+  margin-bottom: 1.5rem; /* Spasi antar langkah (24px) */
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); /* Bayangan halus */
+  overflow: hidden; /* Untuk clearfix jika ada float atau memastikan padding/border benar */
+}
+
+.how-to-use-section li p {
+  font-size: 1.05rem; /* Sedikit lebih besar untuk instruksi (sekitar 17px) */
+  color: #495057; /* Warna teks sedikit lebih lembut */
+  margin-bottom: 1rem; /* Spasi antara teks dan gambar (16px) */
+  line-height: 1.6;
+  font-weight: 500; /* Sedikit lebih tebal agar mudah dibaca */
+}
+
+.how-to-use-section li img {
+  display: block; /* Agar bisa di-margin auto dan width/max-width berfungsi baik */
+  max-width: 100%; /* Gambar tidak akan lebih lebar dari kontainernya */
+  width: 350px;    /* << UKURAN GAMBAR DIPERKECIL (misal 350px, sesuaikan) */
+  height: auto;    /* Menjaga rasio aspek gambar */
+  margin: 0.5rem auto 0 auto; /* Tengahkan gambar dan beri sedikit margin atas/bawah */
+  border: 1px solid #dee2e6; /* Border tipis di sekitar gambar */
+  border-radius: 0.25rem; /* Sudut membulat untuk gambar (4px) */
+  /* box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Bayangan sangat halus untuk gambar */
+}
