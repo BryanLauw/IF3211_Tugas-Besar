@@ -5,7 +5,6 @@
 
     <div class="how-to-use-section">
         <h1>Input by Genotype</h1>
-        <p>This outlines the process your data goes through after submission:</p>
         <ul>
             <li>
                 <p>
@@ -51,7 +50,35 @@
         <h1>Input by Phenotype</h1>
         <ul>
             <li>
-                <p>Monggo diisi.</p>
+                <p>
+                    <strong>1. Phenotype Identification:</strong> Each phenotype (disease name) you input is first searched using the JAX Ontology API to retrieve its OMIM ID. This is done via: <br /><code class="api-endpoint"
+                        >https://ontology.jax.org/api/network/search/disease?q={disease_name}&limit=-1</code
+                    >
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>2. OMIM Annotation & Inheritance Details:</strong> Each identified OMIM ID is then used to query the JAX API again. This call retrieves detailed OMIM annotations, crucially including the inheritance pattern for
+                    that specific disease/phenotype, from: <br /><code class="api-endpoint">https://ontology.jax.org/api/network/annotation/[OMIM_ID]</code>
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>3. Inheritance Category Identification:</strong> From the OMIM annotation details, the system extracts the inheritance category for the matched disease (e.g., Autosomal Dominant, Autosomal Recessive, X-linked
+                    Dominant, X-linked Recessive, or Y-linked).
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>4. Risk Calculation (per disease):</strong> After fetching all the required data, we begin calculating the risk for each disease using Punnet square formula.
+                    Each disease risk is then stored for calculating the total risk later.
+                </p>
+            </li>
+            <li>
+                <p>
+                    <strong>5. Total Risk Calculation:</strong> Finally, we calculate the total risk for every combination of diseases using Dynamic Programming technique that uses the pre-calculated
+                    risk of each disease that has been stored before.
+                </p>
             </li>
         </ul>
     </div>

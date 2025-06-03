@@ -403,7 +403,7 @@ class CalculatorController < ApplicationController
            calculator_params[:phenotypes].is_a?(Array) &&
            calculator_params[:phenotypes_p1].is_a?(Array) &&
            calculator_params[:phenotypes_p2].is_a?(Array)
-      flash[:alert] = "Data input tidak lengkap atau format salah. Mohon coba lagi."
+      flash[:alert] = "Input data is incomplete or incorrectly formatted. Please try again."
       redirect_to phenotype_calculator_path
       return
     end
@@ -423,7 +423,7 @@ class CalculatorController < ApplicationController
     end
 
     if user_inputs.empty?
-      flash[:alert] = "Tidak ada nama fenotip valid yang diinput. Mohon isi setidaknya satu baris fenotip dengan lengkap."
+      flash[:alert] = "No valid phenotype name was entered. Please fill in at least one phenotype row completely."
       redirect_to phenotype_calculator_path
       return
     end
@@ -450,13 +450,13 @@ class CalculatorController < ApplicationController
         disease_search_response = HTTParty.get(disease_search_url, timeout: API_TIMEOUT)
 
         unless disease_search_response.success?
-          current_api_result["api_error"] = "Gagal menghubungi API pencarian penyakit (Status: #{disease_search_response.code})."
+          current_api_result["api_error"] = "Failed to contact disease search API (Status: #{disease_search_response.code})."
           processed_api_data_list << current_api_result
           next
         end
         parsed_disease_search = disease_search_response.parsed_response
         unless parsed_disease_search.is_a?(Hash) && parsed_disease_search['results'].is_a?(Array)
-          current_api_result["api_error"] = "Format respons API pencarian penyakit tidak sesuai."
+          current_api_result["api_error"] = "Disease search API response format is not correct."
           processed_api_data_list << current_api_result
           next
         end
@@ -469,7 +469,7 @@ class CalculatorController < ApplicationController
         selected_omim_entry ||= omim_entries.find { |r_omim| r_omim['name'].is_a?(String) }
         selected_omim_entry ||= omim_entries.first
         unless selected_omim_entry && selected_omim_entry['id'].is_a?(String)
-          current_api_result["api_error"] = "Tidak ditemukan OMIM ID valid untuk fenotip '#{input_item[:name]}'."
+          current_api_result["api_error"] = "No valid OMIM ID found for phenotype '#{input_item[:name]}'."
           processed_api_data_list << current_api_result
           next
         end
@@ -481,13 +481,13 @@ class CalculatorController < ApplicationController
         omim_annotation_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(omim_id_from_api)}"
         omim_annotation_response = HTTParty.get(omim_annotation_url, timeout: API_TIMEOUT)
         unless omim_annotation_response.success?
-          current_api_result["api_error"] = "Gagal mengambil anotasi untuk OMIM ID '#{omim_id_from_api}' (Status: #{omim_annotation_response.code})."
+          current_api_result["api_error"] = "Failed to fetch annotation for OMIM ID '#{omim_id_from_api}' (Status: #{omim_annotation_response.code})."
           processed_api_data_list << current_api_result
           next
         end
         parsed_omim_annotation = omim_annotation_response.parsed_response
         unless parsed_omim_annotation.is_a?(Hash)
-          current_api_result["api_error"] = "Format respons API anotasi OMIM tidak sesuai."
+          current_api_result["api_error"] = "OMIM annotation API response format is not correct."
           processed_api_data_list << current_api_result
           next
         end
@@ -495,12 +495,12 @@ class CalculatorController < ApplicationController
         if inheritance_info.is_a?(String) && inheritance_info.present?
           current_api_result["api_inheritance_type"] = inheritance_info
         else
-          current_api_result["api_error"] = [current_api_result["api_error"], "Info pewarisan tidak ditemukan atau format tidak sesuai."].compact.join(" ").strip
+          current_api_result["api_error"] = [current_api_result["api_error"], "Inheritance info not found or format is incorrect."].compact.join(" ").strip
         end
         current_api_result["api_error"] = nil if current_api_result["api_error"].blank?
       rescue HTTParty::Error, SocketError, Timeout::Error => e
         Rails.logger.error "JAX API Network Error for phenotype '#{input_item&.[](:name) || 'unknown'}': #{e.class} - #{e.message}"
-        current_api_result["api_error"] = "Kesalahan jaringan atau timeout saat menghubungi JAX API: #{e.message}"
+        current_api_result["api_error"] = "Network error or timeout when calling JAX API: #{e.message}"
       rescue StandardError => e
         log_message = "Unexpected error during API fetch for phenotype "
         log_message += (input_item && input_item[:name]) ? "'#{input_item[:name]}'" : "[unknown phenotype input]"
@@ -509,14 +509,14 @@ class CalculatorController < ApplicationController
           log_message += "\nBacktrace:\n#{e.backtrace.first(10).join("\n")}"
         end
         Rails.logger.error log_message
-        current_api_result["api_error"] = "Terjadi kesalahan internal tidak terduga saat mengambil data API."
+        current_api_result["api_error"] = "An unexpected internal error occurred while retrieving API data."
       ensure
         processed_api_data_list << current_api_result
       end
 
       if current_api_result["api_error"].blank? && current_api_result["api_inheritance_type"].present?
-        p1_status = current_api_result["input_parent1_phenotype"] == "Ada" ? "Positive" : "Negative"
-        p2_status = current_api_result["input_parent2_phenotype"] == "Ada" ? "Positive" : "Negative"
+        p1_status = current_api_result["input_parent1_phenotype"] == "Present" ? "Positive" : "Negative"
+        p2_status = current_api_result["input_parent2_phenotype"] == "Present" ? "Positive" : "Negative"
 
         calculation_input = {
           "phenotype_name" => current_api_result["phenotype"],
@@ -539,13 +539,13 @@ class CalculatorController < ApplicationController
             Rails.logger.error log_message
             calculation_details_list << {
                 phenotype_name: current_api_result["phenotype"],
-                error: "Terjadi kesalahan internal saat melakukan kalkulasi Mendel."
+                error: "An internal error occurred while performing Mendelian calculations."
             }
         end
       else
         calculation_details_list << {
             phenotype_name: current_api_result["phenotype"],
-            error: current_api_result["api_error"] || "Tipe pewarisan tidak ditemukan, kalkulasi tidak dapat dilanjutkan."
+            error: current_api_result["api_error"] || "Inheritance type not found, calculation cannot continue."
         }
       end
     end
