@@ -14,16 +14,15 @@ services:
 
   web:
     build: .
-    command: ./bin/rails server -b 0.0.0.0 -p 3000 # Ensure entrypoint runs
     ports:
       - "3000:3000"
     volumes:
       - .:/rails
-    depends_on: # Make sure DB starts before web app
+    depends_on:
       - db
     environment:
       RAILS_ENV: development
-      DATABASE_URL: "postgresql://myuser:mysecret@db:5432/myapp_dev" # Connect to 'db' service
+      DATABASE_URL: "postgresql://myuser:mysecret@db:5432/myapp_dev"
 
 volumes:
   db_data: # Defines the named volume for DB persistence

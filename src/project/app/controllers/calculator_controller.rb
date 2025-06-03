@@ -1,14 +1,23 @@
 # app/controllers/calculator_controller.rb
 require 'httparty'
 require 'cgi'
+require 'securerandom'
 
 class CalculatorController < ApplicationController
   JAX_API_BASE_URL = "https://ontology.jax.org/api/network"
   API_TIMEOUT = 15
 
   def genotype
-    @form_params = session.delete(:last_calculator_input) || {}
-    @processed_results = session.delete(:kalkulasi_results_data) || []
+    @form_params = session.delete(:last_calculator_input) || {} # Untuk repopulasi form
+    
+    submission_batch_id = flash[:genotype_submission_batch_id]
+    if submission_batch_id.present?
+      # Ambil hasil dari database berdasarkan batch ID, urutkan sesuai keinginan
+      @processed_results = GenotypeCalculationResult.where(submission_batch_id: submission_batch_id).order(created_at: :asc)
+    else
+      @processed_results = []
+    end
+    # Pesan flash[:alert], flash[:notice], flash[:info] akan otomatis tersedia di view
   end
 
   def get_alleles(zygosity)
@@ -168,87 +177,97 @@ class CalculatorController < ApplicationController
   def process_genotype
     calculator_data = params[:calculator]
     submitted_genes = []
-    searched_phenotypes = [] # User-searched phenotypes
+    searched_phenotypes = []
     zygosities_p1 = []
     zygosities_p2 = []
 
+    # Buat ID unik untuk submisi ini
+    submission_batch_id = SecureRandom.uuid
+
     if calculator_data.present?
       permitted_input_params = calculator_data.permit(genes: [], zygosities_p1: [], zygosities_p2: [], phenotypes: [])
-      session[:last_calculator_input] = permitted_input_params.to_h
-      submitted_genes = calculator_data[:genes]&.reject(&:blank?) || []
-      searched_phenotypes = calculator_data[:phenotypes]&.reject(&:blank?) || []
-      zygosities_p1 = calculator_data[:zygosities_p1]&.reject(&:blank?) || []
-      zygosities_p2 = calculator_data[:zygosities_p2]&.reject(&:blank?) || []
+      session[:last_calculator_input] = permitted_input_params.to_h # Untuk repopulasi form
+
+      submitted_genes = permitted_input_params[:genes]&.reject(&:blank?) || []
+      searched_phenotypes = permitted_input_params[:phenotypes]&.reject(&:blank?) || []
+      zygosities_p1 = permitted_input_params[:zygosities_p1]&.reject(&:blank?) || []
+      zygosities_p2 = permitted_input_params[:zygosities_p2]&.reject(&:blank?) || []
     else
-      session[:alert] = "Input data not received." # Diubah dari "Input not found." untuk kejelasan
+      flash[:alert] = "Input data not received."
       redirect_to genotype_calculator_path
       return
     end
 
-    temp_results = []
-
-    # Initial validation: genes AND searched phenotypes are required if we only want to save matches
+    # Validasi input awal (tetap menggunakan flash untuk pesan)
     if submitted_genes.empty?
-      session[:alert] = "Gene inputs are required."
+      flash[:alert] = "Gene inputs are required."
       redirect_to genotype_calculator_path
       return
     elsif searched_phenotypes.empty?
-      session[:alert] = "Searched phenotype input is required to display results."
+      flash[:alert] = "Searched phenotype input is required to display results."
       redirect_to genotype_calculator_path
       return
     end
 
-    # Validate zygosity array lengths (Important!)
     unless submitted_genes.length == zygosities_p1.length && submitted_genes.length == zygosities_p2.length
-      session[:alert] = "Zygosity data is incomplete or does not match the number of genes submitted. Please check your input."
+      flash[:alert] = "Zygosity data is incomplete or does not match the number of genes submitted. Please check your input."
       redirect_to genotype_calculator_path
       return
     end
+
+    # Untuk melacak jumlah keberhasilan dan error untuk pesan flash akhir
+    successful_individual_results_count = 0
+    error_individual_results_count = 0
 
     submitted_genes.each_with_index do |gene_name, index|
       api_data_for_gene = {
         gene_name: gene_name,
         jax_gene_id: nil,
-        # selected_omim_id, omim_main_disease_name, inheritance_type tidak lagi di level ini
-        # karena bisa ada multiple matches
-        error_message: nil
+        error_message: nil # Error spesifik untuk pemrosesan gen ini sebelum kalkulasi
       }
       puts "PROCESSING GENE: #{gene_name}"
 
       begin
         # 1a. Search Gene
         gene_search_url = "#{JAX_API_BASE_URL}/search/gene?q=#{CGI.escape(gene_name)}&limit=1"
-        puts "  1a. Gene Search URL: #{gene_search_url}" # Sudah Inggris
-        gene_search_response = HTTParty.get(gene_search_url, timeout: 15)
+        gene_search_response = HTTParty.get(gene_search_url, timeout: API_TIMEOUT)
 
         unless gene_search_response.success? && (parsed_gene_search = gene_search_response.parsed_response).is_a?(Hash) &&
               parsed_gene_search['results'].is_a?(Array) && !parsed_gene_search['results'].empty? &&
               (first_gene_result = parsed_gene_search['results'].first).is_a?(Hash) && first_gene_result['id'].present?
           api_data_for_gene[:error_message] = "Gene '#{gene_name}' not found or API search format is invalid. (Status: #{gene_search_response.code rescue 'N/A'})"
           puts "  ERROR 1a: #{api_data_for_gene[:error_message]}"
-          temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
+          GenotypeCalculationResult.create(
+            submission_batch_id: submission_batch_id,
+            input_gene_name: gene_name,
+            gene_processing_error: api_data_for_gene[:error_message]
+          )
+          error_individual_results_count += 1
           next
         end
         api_data_for_gene[:jax_gene_id] = first_gene_result['id']
-        puts "  1a. JAX Gene ID: #{api_data_for_gene[:jax_gene_id]}" # Sudah Inggris
+        puts "  1a. JAX Gene ID: #{api_data_for_gene[:jax_gene_id]}"
 
         # 1b. Get Gene Annotations
         gene_annotation_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(api_data_for_gene[:jax_gene_id])}"
-        puts "  1b. Gene Annotation URL: #{gene_annotation_url}"
-        gene_annotation_response = HTTParty.get(gene_annotation_url, timeout: 15)
+        gene_annotation_response = HTTParty.get(gene_annotation_url, timeout: API_TIMEOUT)
 
         unless gene_annotation_response.success? && (parsed_gene_annotation = gene_annotation_response.parsed_response).is_a?(Hash) &&
                parsed_gene_annotation['diseases'].is_a?(Array)
           api_data_for_gene[:error_message] = "'diseases' annotation format from JAX Gene ID is invalid for '#{api_data_for_gene[:jax_gene_id]}'. (Status: #{gene_annotation_response.code rescue 'N/A'})"
           puts "  ERROR 1b: #{api_data_for_gene[:error_message]}"
-          temp_results << { input_gene_name: gene_name, error: api_data_for_gene[:error_message] }
+          GenotypeCalculationResult.create(
+            submission_batch_id: submission_batch_id,
+            input_gene_name: gene_name,
+            jax_gene_id: api_data_for_gene[:jax_gene_id],
+            gene_processing_error: api_data_for_gene[:error_message]
+          )
+          error_individual_results_count += 1
           next
         end
 
-        # Flag untuk melacak apakah setidaknya satu kecocokan OMIM diproses untuk gen ini
         any_omim_match_processed_for_this_gene = false
 
-        # Iterasi melalui SEMUA 'diseases' dari anotasi gen
         parsed_gene_annotation['diseases'].each do |disease_data_from_gene_annotation|
           next unless disease_data_from_gene_annotation.is_a?(Hash) &&
                       disease_data_from_gene_annotation['id']&.start_with?("OMIM:") &&
@@ -257,7 +276,6 @@ class CalculatorController < ApplicationController
           current_omim_id_from_list = disease_data_from_gene_annotation['id']
           current_omim_name_from_list = disease_data_from_gene_annotation['name']
 
-          # Lakukan pencocokan dengan setiap fenotipe yang dicari pengguna
           is_phenotype_match = searched_phenotypes.any? do |user_pheno|
             user_pheno_clean = user_pheno.downcase.strip
             current_omim_name_clean = current_omim_name_from_list.downcase
@@ -267,15 +285,13 @@ class CalculatorController < ApplicationController
           if is_phenotype_match
             puts "  MATCH FOUND: Gene '#{gene_name}' linked to OMIM Disease '#{current_omim_name_from_list}' (ID: #{current_omim_id_from_list}) which matches user search."
             
-            inheritance_type_for_this_match = nil # Default
-
-            # Dapatkan detail OMIM (termasuk tipe pewarisan) untuk ID OMIM yang cocok ini
+            inheritance_type_for_this_match = nil
             omim_details_url = "#{JAX_API_BASE_URL}/annotation/#{CGI.escape(current_omim_id_from_list)}"
-            puts "    Fetching details for matched OMIM ID: #{omim_details_url}"
-            omim_details_response = HTTParty.get(omim_details_url, timeout: 15)
+            omim_details_response = HTTParty.get(omim_details_url, timeout: API_TIMEOUT)
 
             if omim_details_response.success? && (parsed_omim_details_for_match = omim_details_response.parsed_response).is_a?(Hash)
-              if parsed_omim_details_for_match['categories'].is_a?(Hash) &&
+              # ... (logika ekstraksi inheritance_type_for_this_match tetap sama) ...
+               if parsed_omim_details_for_match['categories'].is_a?(Hash) &&
                  parsed_omim_details_for_match['categories']['Inheritance'].is_a?(Array) &&
                  (first_inheritance_info = parsed_omim_details_for_match['categories']['Inheritance'].first).is_a?(Hash) &&
                  first_inheritance_info['name'].present?
@@ -286,94 +302,81 @@ class CalculatorController < ApplicationController
               end
             else
               puts "    ERROR: Failed to retrieve details for matched OMIM ID '#{current_omim_id_from_list}'. (Status: #{omim_details_response.code rescue 'N/A'})"
-              # Anda bisa memutuskan apakah kegagalan mengambil detail ini harus menghentikan penambahan ke hasil
-              # atau tetap menambahkannya dengan inheritance_type = nil
             end
             
-            # Jika detail (meskipun inheritance_type bisa nil) berhasil diproses sampai tahap ini, set flag
             any_omim_match_processed_for_this_gene = true
+            matched_phenotype_detail_for_this_iteration = [{ name: current_omim_name_from_list, id: current_omim_id_from_list, source: "OMIM Match from Gene Annotation" }]
 
-            # Persiapkan detail fenotip yang cocok untuk fungsi calculate_genotype dan untuk disimpan
-            matched_phenotype_detail_for_this_iteration = [{
-              name: current_omim_name_from_list,
-              id: current_omim_id_from_list,
-              source: "OMIM Match from Gene Annotation" # Sumber lebih spesifik
-            }]
-
-            # Panggil fungsi calculate_genotype untuk SETIAP kecocokan OMIM
-            # Definisi fungsi calculate_genotype Anda:
-            # def calculate_genotype(gene_name, diesease_name, inheritance_type, father_zygosity, mother_zygosity)
             calculation_result = calculate_genotype(
-              gene_name,
-              current_omim_name_from_list,
-              inheritance_type_for_this_match, # Bisa nil
-              zygosities_p1[index],
-              zygosities_p2[index]
+              gene_name, current_omim_name_from_list, inheritance_type_for_this_match,
+              zygosities_p1[index], zygosities_p2[index]
             )
 
-            temp_results << {
+            GenotypeCalculationResult.create!( # Gunakan create! agar error jika validasi model gagal
+              submission_batch_id: submission_batch_id,
               input_gene_name: gene_name,
+              jax_gene_id: api_data_for_gene[:jax_gene_id],
+              associated_omim_id: current_omim_id_from_list,
               associated_disease_name: current_omim_name_from_list,
               inheritance_type: inheritance_type_for_this_match,
-              matched_phenotypes_details: matched_phenotype_detail_for_this_iteration, # Ini adalah detail untuk kecocokan spesifik ini
-              calculation_result: calculation_result,
-              error: nil # Error API gen sudah ditangani. Error detail OMIM bisa dicatat di log atau ditambahkan ke calculation_result jika perlu.
-            }
+              matched_phenotypes_details_json: matched_phenotype_detail_for_this_iteration,
+              calculation_output_json: calculation_result,
+              gene_processing_error: nil # Tidak ada error spesifik untuk GEN ini jika sampai sini
+            )
+            successful_individual_results_count += 1
             puts "  -> GENE '#{gene_name}' - Processed OMIM match: '#{current_omim_name_from_list}'."
-            # TIDAK ADA 'break' di sini, jadi loop akan berlanjut ke disease_data berikutnya
-          end # akhir dari if is_phenotype_match
-        end # akhir dari iterasi parsed_gene_annotation['diseases']
+          end 
+        end 
 
-        # Setelah loop 'diseases' selesai:
-        # Jika tidak ada kecocokan OMIM sama sekali yang diproses untuk gen ini,
-        # DAN tidak ada error API sebelumnya untuk gen ini (misalnya, gen tidak ditemukan).
         if !any_omim_match_processed_for_this_gene && api_data_for_gene[:error_message].nil?
           puts "  -> GENE '#{gene_name}' (JAX ID: #{api_data_for_gene[:jax_gene_id]}) - No OMIM diseases listed for this gene matched the user's searched phenotypes."
-          temp_results << {
+          GenotypeCalculationResult.create(
+            submission_batch_id: submission_batch_id,
             input_gene_name: gene_name,
-            error: "No OMIM diseases linked to this gene matched your searched phenotypes."
-            # Anda bisa tambahkan field lain seperti jax_gene_id atau associated_disease_name: "N/A" jika mau ditampilkan di UI
-          }
+            jax_gene_id: api_data_for_gene[:jax_gene_id],
+            gene_processing_error: "No OMIM diseases linked to this gene matched your searched phenotypes."
+          )
+          error_individual_results_count +=1 # Dihitung sebagai entri "error" atau "tidak ada hasil"
         end
 
       rescue HTTParty::Error, SocketError => e
-        temp_results << { input_gene_name: gene_name, error: "API connection issue: #{e.message}" }
+        GenotypeCalculationResult.create(
+          submission_batch_id: submission_batch_id,
+          input_gene_name: gene_name,
+          jax_gene_id: api_data_for_gene[:jax_gene_id], # Mungkin nil jika error sebelum ini
+          gene_processing_error: "API connection issue: #{e.message}"
+        )
+        error_individual_results_count += 1
       rescue StandardError => e
-        temp_results << { input_gene_name: gene_name, error: "Unexpected error: #{e.message}", backtrace: e.backtrace.first(5) }
-        puts "STACKTRACE: #{e.backtrace.join("\n")}" # Log full stacktrace on server
+        GenotypeCalculationResult.create(
+          submission_batch_id: submission_batch_id,
+          input_gene_name: gene_name,
+          jax_gene_id: api_data_for_gene[:jax_gene_id],
+          gene_processing_error: "Unexpected error: #{e.message}"
+        )
+        error_individual_results_count += 1
+        puts "STACKTRACE: #{e.backtrace.join("\n")}"
       end
-    end
+    end # Akhir dari submitted_genes.each_with_index
 
-    session[:kalkulasi_results_data] = temp_results # Storing results in session
-    
-    # Set flash messages based on processing outcome
-    if !calculator_data.present? || (submitted_genes.empty? && searched_phenotypes.empty?)
-      session[:alert] = "No valid input data to process."
-    else
-      successful_matches_count = temp_results.count { |r| r[:error].nil? && r[:matched_phenotypes_details].present? && r[:matched_phenotypes_details].any? }
-      error_entries_count = temp_results.count { |r| r[:error].present? }
-      total_submitted_genes = submitted_genes.count
+    flash[:genotype_submission_batch_id] = submission_batch_id # Simpan ID batch ke flash
 
-      if successful_matches_count > 0
-        session[:notice] = "Found #{successful_matches_count} gene(s) with matching phenotypes."
-        if error_entries_count > 0
-          session[:alert] = "However, #{error_entries_count} other gene(s) had issues during processing or were not found."
-        end
-      elsif error_entries_count == total_submitted_genes && total_submitted_genes > 0
-        session[:alert] = "All #{total_submitted_genes} submitted gene(s) encountered issues during processing."
-      elsif error_entries_count > 0 && error_entries_count < total_submitted_genes
-        # This means some had errors, and the rest (that didn't error out early) didn't have matches.
-        session[:alert] = "#{error_entries_count} gene(s) had processing issues. The remaining processed genes did not find matching phenotypes."
-      elsif total_submitted_genes > 0 && temp_results.all? { |r| r[:error].present? || r[:matched_phenotypes_details].blank? || !r[:matched_phenotypes_details].any? }
-        # All processed genes either had an error or no matching phenotypes.
-        session[:info] = "No matching phenotypes were found for the processed genes, or all genes encountered errors."
-      elsif temp_results.empty? && total_submitted_genes > 0 # All genes failed very early (e.g. API down) or no genes had any matches
-          session[:info] = "No genes resulted in matching phenotypes, or processing could not be completed for any gene."
-      elsif temp_results.empty? && total_submitted_genes == 0 && calculator_data.present?
-        session[:alert] = "No valid genes were submitted for processing." # More specific
-      else # Fallback, should be rare if other conditions are comprehensive
-        session[:info] = "Processing complete. Check results."
+    # Set flash messages berdasarkan hasil penyimpanan ke DB
+    total_processed_entries = successful_individual_results_count + error_individual_results_count
+
+    if successful_individual_results_count > 0
+      flash[:notice] = "Successfully processed and saved #{successful_individual_results_count} result(s) to the database."
+      if error_individual_results_count > 0
+        flash[:alert_processing_issues] = "#{error_individual_results_count} other input(s) or processing steps encountered errors or yielded no specific match."
       end
+    elsif error_individual_results_count > 0 && error_individual_results_count == submitted_genes.length # Semua gen input menghasilkan error/no match
+        flash[:alert] = "All #{submitted_genes.length} gene input(s) resulted in an error or no specific phenotype match."
+    elsif total_processed_entries == 0 && submitted_genes.any? # Tidak ada yang diproses sama sekali padahal ada input
+        flash[:alert] = "Processing could not be completed for the submitted genes."
+    elsif submitted_genes.empty? && calculator_data.present? # Ini sudah ditangani di awal, tapi sebagai fallback
+      flash[:alert] = "No valid genes were submitted for processing."
+    else # Fallback umum
+      flash[:info] = "Processing complete. Results (if any) have been saved."
     end
     
     redirect_to genotype_calculator_path 

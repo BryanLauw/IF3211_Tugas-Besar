@@ -1,0 +1,2 @@
+class GenotypeCalculationResult < ApplicationRecord
+end

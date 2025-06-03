@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Enable jemalloc for reduced memory usage and latency.
+# Enable jemalloc
 if [ -z "${LD_PRELOAD+x}" ]; then
     LD_PRELOAD=$(find /usr/lib -name libjemalloc.so.2 -print -quit)
     export LD_PRELOAD
@@ -10,7 +10,13 @@ rm -f /rails/tmp/pids/server.pid
 
 echo "Running database migrations..."
 bundle exec rake db:migrate
-
 echo "Database migrations complete."
 
-exec "${@}"
+# Tambahkan pengecekan ini:
+if [ "$#" -eq 0 ]; then
+  echo "No command passed, defaulting to Rails server..."
+  set -- bundle exec rails server -b 0.0.0.0 -p 3000
+fi
+
+echo "Running: $@"
+exec "$@"
