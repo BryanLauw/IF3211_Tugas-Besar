@@ -1,3 +1,91 @@
-<div class="main top-main">
+<main class="main top-main">
     <h2>Perhitungan dengan Fenotip</h2>
-</div>
+
+    <% if flash[:alert] %>
+      <div class="flash-message alert" style="background-color: #fff5f5; border: 1px solid #e53e3e; color: #c53030; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:alert] %></div>
+    <% end %>
+    <% if flash[:info] %>
+      <div class="flash-message info" style="background-color: #e6f7ff; border: 1px solid #91d5ff; color: #0050b3; padding: 1rem; margin-bottom: 1.5rem; border-radius: 0.25rem;"><%= flash[:info] %></div>
+    <% end %>
+
+    <%= form_with(url: process_phenotype_calculator_path, method: :post, local: true, data: { turbo: false }, html: { class: "main-calculator-form" }) do |form| %>
+        <%# --- Input Fenotip --- %>
+        <div data-controller="dynamic-table" class="dynamic-section">
+            <h1>Masukkan fenotip yang ingin diketahui</h1>
+            <table class="dynamic-form-table">
+                <thead>
+                    <tr>
+                        <th>Nomor</th>
+                        <th>Fenotip</th>
+                        <th>Fenotip P1</th>
+                        <th>Fenotip P2</th>
+                        <th>Aksi</th>
+                    </tr>   
+                </thead>
+                <tbody data-dynamic-table-target="container">
+                    <tr data-dynamic-table-target="row">
+                        <td>1</td>
+                        <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Tinggi" %></td>
+                        <td>
+                            <%= select_tag "calculator[phenotypes_p1][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                        </td>
+                        <td>
+                            <%= select_tag "calculator[phenotypes_p2][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="table-actions">
+                <button type="button" data-action="click->dynamic-table#addRow" class="button-add-row">+ Tambah Fenotip</button>
+            </div>
+            <template data-dynamic-table-target="template">
+                <tr data-dynamic-table-target="row">
+                    <td></td>
+                    <td><%= text_field_tag "calculator[phenotypes][]", nil, class: "table-input", placeholder: "Contoh: Tinggi" %></td>
+                    <td>
+                        <%= select_tag "calculator[phenotypes_p1][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                    </td>
+                    <td>
+                        <%= select_tag "calculator[phenotypes_p2][]", options_for_select([["Ada", "Ada"], ["Tidak ada", "Tidak ada"]]), class: "table-select" %>
+                    </td>
+                    <td><button type="button" data-action="click->dynamic-table#removeRow" class="button-remove-row">✕</button></td>
+                </tr>
+            </template>
+        </div>
+
+        <%# --- Tombol Submit Utama --- %>
+        <div class="table-actions">
+            <%= form.submit "Proses Data Fenotip", class: "button-add-row" %>
+        </div>
+    <% end %> <%# Akhir dari form_with %>
+
+    <%# === BAGIAN UNTUK MENAMPILKAN HASIL === %>
+    <% if defined?(@processed_results) && @processed_results.present? %>
+        <section class="results-section dynamic-section" id="hasil-analisis" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
+            <h1>Input user</h1>
+
+            <% @processed_results.each_with_index do |result, index| %>
+                <div class="result-item" style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; border-radius: 0.3rem; background-color: #fdfdfd;">
+                    <h3 style="margin-top:0; margin-bottom: 0.75rem; font-size: 1.2rem; color: #2c3e50;">
+                        Input ke-<%= index + 1 %>: <strong><%= result["phenotype"] || "N/A" %></strong>
+                    </h3>
+
+                    <p>
+                        <strong>Fenotip P1:</strong> 
+                        <%= result["p1"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
+                    </p>
+                    <p>
+                        <strong>Fenotip P2:</strong> 
+                        <%= result["p2"] || "<span style='color: #777;'>Tidak ditemukan/Tidak relevan</span>".html_safe %>
+                    </p>
+                </div>
+            <% end %>
+        </section>
+    <% elsif params[:action] == "process_genotype" && (!defined?(@processed_results) || @processed_results.blank?) %>
+        <section class="results-section dynamic-section" id="hasil-analisis-kosong" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #e0e0e0;">
+            <h1>Input user</h1>
+            <p>Tidak ada hasil untuk ditampilkan atau tidak ada input yang valid. Pastikan input gen sudah benar atau coba lagi.</p>
+        </section>
+    <% end %>
+</main>

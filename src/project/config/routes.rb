@@ -1,15 +1,17 @@
 Rails.application.routes.draw do
   get "home/index"
-  get "calculator/genotype"
   get "/home", to: "home#index"
   get "/howtouse", to: "home#howtouse"
   get "/concept", to: "home#concept"
   get "/about", to: "home#about"
-
-  get "/genotype", to: "calculator#genotype", as: :genotype_calculator # Menambahkan 'as' untuk helper path
+  
+  get "calculator/genotype"
+  get "/genotype", to: "calculator#genotype", as: :genotype_calculator
   post "/calculator/process_genotype", to: "calculator#process_genotype", as: :process_genotype_calculator
   
-  get "/phenotype", to: "calculator#phenotype"
+  get "calculator/phenotype"
+  get "/phenotype", to: "calculator#phenotype", as: :phenotype_calculator
+  post "/calculator/process_phenotype", to: "calculator#process_phenotype", as: :process_phenotype_calculator
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.

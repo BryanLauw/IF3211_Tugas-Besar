@@ -9,10 +9,6 @@ class CalculatorController < ApplicationController
     @processed_results = flash[:kalkulasi_results_data] || []
   end
 
-  def phenotype
-    # Action untuk halaman lain
-  end
-
   def process_genotype
     calculator_data = params[:calculator]
     submitted_genes = []
@@ -253,5 +249,36 @@ class CalculatorController < ApplicationController
     end
     
     redirect_to genotype_calculator_path 
+  end
+
+  def phenotype
+    @processed_results = flash[:kalkulasi_results_data] || []
+  end
+
+  def process_phenotype
+    calculator_data = params[:calculator]
+    submitted_phenotypes = [] # Fenotip yang diinput pengguna
+    phenotypes_p1 = []
+    phenotypes_p2 = []
+    temp_result = []
+
+    if calculator_data.present?
+      # isi variabel di sini
+      submitted_phenotypes = calculator_data[:phenotypes]&.reject(&:blank?) || []
+      phenotypes_p1 = calculator_data[:phenotypes_p1]&.reject(&:blank?) || []
+      phenotypes_p2 = calculator_data[:phenotypes_p2]&.reject(&:blank?) || []
+    else
+      flash[:alert] = "Tidak ada data input yang diterima."
+      redirect_to phenotype_calculator_path
+      return
+    end
+
+    # cara ngasih ke fe, misalnya jadiin list json
+    submitted_phenotypes.each_with_index do |phenotype, index|
+      temp_result << {phenotype: phenotype, p1: phenotypes_p1[index], p2: phenotypes_p2[index]}
+    end
+    flash[:kalkulasi_results_data] = temp_result
+
+    redirect_to phenotype_calculator_path
   end
 end
