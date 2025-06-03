@@ -1,10 +1,29 @@
+# docker-compose.yml
 services:
+  db:
+    image: postgres:14 # Or mysql:8.0, etc.
+    volumes:
+      - db_data:/var/lib/postgresql/data # Persists DB data
+      # For MySQL, the path is usually /var/lib/mysql
+    environment:
+      POSTGRES_USER: myuser        # Choose a user
+      POSTGRES_PASSWORD: mysecret  # Choose a password
+      POSTGRES_DB: myapp_dev     # Choose a database name for development
+    # ports: # Optionally expose DB port to host for direct access with tools
+    #   - "5432:5432" 
+
   web:
     build: .
-    command: ./bin/rails server -b 0.0.0.0 -p 3000
+    command: ./bin/rails server -b 0.0.0.0 -p 3000 # Ensure entrypoint runs
     ports:
       - "3000:3000"
     volumes:
       - .:/rails
+    depends_on: # Make sure DB starts before web app
+      - db
     environment:
       RAILS_ENV: development
+      DATABASE_URL: "postgresql://myuser:mysecret@db:5432/myapp_dev" # Connect to 'db' service
+
+volumes:
+  db_data: # Defines the named volume for DB persistence

@@ -9,7 +9,7 @@ fi
 rm -f /rails/tmp/pids/server.pid
 
 echo "Running database migrations..."
-bundle exec rails db:migrate
+bundle exec rake db:migrate
 
 echo "Database migrations complete."
 
