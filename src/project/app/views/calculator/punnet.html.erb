@@ -15,7 +15,7 @@
     <div class="flash-message notice"><%= flash[:notice] %></div>
   <% end %>
 
-  <%= form_with(url: process_genotype_calculator_path, method: :post, local: true, data: { turbo: false }, html: { class: "main-calculator-form" }) do |form| %>
+  <%= form_with(url: process_punnet_calculator_path, method: :post, local: true, data: { turbo: false }, html: { class: "main-calculator-form" }) do |form| %>
     <%# --- Bagian Gen Orang Tua --- %>
     <div data-controller="dynamic-table" class="dynamic-section">
       <h1>Parent's Gene</h1>
